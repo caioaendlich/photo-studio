@@ -1,4 +1,4 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Photo Studio"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><meta name="theme-color" content="#0b0c0c"><title>Photo Studio</title><link rel="stylesheet" href="style.css">
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Media Studio"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><meta name="theme-color" content="#0b0c0c"><title>Media Studio</title><link rel="stylesheet" href="style.css">
 <!-- v3 (24/11/2026, Claude): layout de editor atual. Trilho de abas, barra de ferramentas, inspetor por seções, linha do tempo. Os ids usados por posts.js foram mantidos. -->
 <style>
 :root{--bg:#0e0f0f;--panel:#151716;--panel2:#1b1e1c;--line:#262a28;--line2:#323734;--txt:#e9ebe6;--mute:#8d958b;--acc:#c6f578;--acc2:#2c3624}
@@ -90,7 +90,7 @@ body.image-drag-over::after{content:"Solte a imagem para usar como fundo";positi
 body.celular{padding:0;height:100dvh;overflow:hidden;-webkit-user-select:none;user-select:none}
 body.celular header{height:46px;padding:0 10px;padding-top:env(safe-area-inset-top);box-sizing:content-box}
 body.celular header nav,body.celular #salvarProjeto,body.celular .brand span{display:none}
-body.celular .brand::after{content:'PHOTO STUDIO';font-size:11px;letter-spacing:2px;color:var(--mute);margin-left:6px}
+
 body.celular .head-actions{gap:6px;margin-left:auto}body.celular .head-actions button{padding:7px 10px;font-size:12px;white-space:nowrap}body.celular .salvo-em{display:none}
 body.celular .app{display:flex;flex-direction:column;height:calc(100dvh - 46px - env(safe-area-inset-top));grid-template-columns:none}
 body.celular .stagecol{order:1;flex:0 0 50dvh;min-height:0;display:flex;overflow:hidden}body.celular .drawer{order:2}body.celular .inspector{order:3}body.celular .brand{font-size:0}body.celular .brand b{font-size:16px}
@@ -104,9 +104,10 @@ body.celular input,body.celular select,body.celular textarea{font-size:16px}
 body.celular .projetos-dlg{width:100vw;max-width:100vw;max-height:92dvh;margin:auto 0 0;border-radius:16px 16px 0 0}
 body.celular .pj-head{flex-wrap:wrap}body.celular .pj-lista{grid-template-columns:repeat(2,1fr);gap:10px;padding:12px}
 body.celular .toolbar.side{flex-wrap:wrap}
+.ms-switch{display:inline-flex;border:1px solid #383b3b;border-radius:999px;padding:3px;gap:3px}.ms-switch a,.ms-switch span{padding:7px 15px;border-radius:999px;text-decoration:none;color:#9aa296;font-size:13px}.ms-switch .on{background:#c6f578;color:#1a2312;font-weight:bold}
 </style></head><body>
-<header><div class="brand"><b>◉</b> CAIO <span>VIDEO STUDIO</span></div>
-<nav><a href="index.html">Edição manual</a><a href="montage.html">Montagem por blocos</a><button class="active">Photo Studio</button><a href="estilo.html">Estilo</a></nav>
+<header><div class="brand"><b>◉</b> CAIO <span>MEDIA STUDIO</span></div><div class="ms-switch"><span class="on">Foto</span><a href="video.html">Vídeo</a></div>
+<nav><a href="index.html">Edição manual</a><a href="montage.html">Montagem por blocos</a><button class="active">Media Studio</button><a href="estilo.html">Estilo</a></nav>
 <div class="head-actions"><span id="salvoEm" class="salvo-em"></span><button id="projetosBtn">Projetos</button><button id="salvarProjeto">Salvar</button><button id="exportarVideo">Exportar clipe</button><button class="primary" id="exportar">Exportar PNG</button></div></header>
 
 <div class="app">
