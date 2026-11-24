@@ -10,6 +10,7 @@ import { interpolate, snapshot, saveKeyframe, removeKeyframe, exportCanvasVideo,
 import { makeAnalysis, drawAnalysis, installFocusDrawing } from './posts-analysis.js';
 import { makeDiffuse, drawDiffuse } from './posts-diffuse.js';
 import { quadPoints, validQuad } from './posts-optics.js';
+import { RECEITAS, receitaPorId, novaReceita, desenharReceita, ENTRADAS, aplicarEntrada } from './posts-recipes.js';
 import { LOOKS, CAMPOS_COR, AMBIENTES, FUNDOS, PLANOS, PADRAO as FUNDO_PADRAO, desenharFotoTratada } from './posts-fundo.js';
 const $ = id => document.getElementById(id);
 const cv = $('canvas'), ctx = cv.getContext('2d');
@@ -248,6 +249,7 @@ function desenharForma(c, F, base) {
   if (F.forma === 'fantasma') { desenharFantasma(c, F, base); return; }
   if (F.forma === 'discoFosco') { desenharDiscoFosco(c, F, base); return; }
   if (F.forma === 'anelTexto') { desenharAnel(c, F); return; }
+  if (F.forma === 'receita') { desenharReceita(c, F, envReceita()); return; }
   if (F.forma === 'desfoqueDifuso') { drawDiffuse(c, base, F); return; }
   if (F.forma === 'painelAnalise') { drawAnalysis(c, base, F); return; }
   if (isEditorialEffect(F.forma)) { drawEditorialEffect(c, base, F); return; }
@@ -379,6 +381,12 @@ async function obterRosto() {
 // Fantasma em movimento (referência de Caio 24/11 02:06): uma segunda exposição da pessoa, deslocada e com desfoque de
 // movimento leve, atrás do rosto nítido, mais um rastro curto do outro lado. Usa o recorte da pessoa (feito no Mac).
 // Arrastar a camada move o fantasma; os cantos mudam o tamanho dele.
+// Estilos de palavra do Video Studio (posts-recipes.js): máscara da pessoa e dos objetos enquadradas no formato atual.
+function envReceita() {
+  const mp = st.pessoa || st.objetos[pessoaIdx()]?.img;
+  return { W: W(), H: H(), dur: st.motion.duration, pessoa: mp ? mascara(mp) : null,
+    objeto: i => { const o = st.objetos[i] || st.objetos.find(x => x.kind !== 'person') || st.objetos[pessoaIdx()]; const img = o?.img || mp; return img ? mascara(img) : null; } };
+}
 function caixaPessoa(m) {
   const k = 'bbox' + chaveEnq(); if (m[k]) return m[k];
   let x0 = W(), y0 = H(), x1 = 0, y1 = 0; for (let y = 0; y < H(); y += 3) for (let x = 0; x < W(); x += 3) if (m.alfa[(y * W() + x) * 4 + 3] > 100) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
@@ -654,6 +662,8 @@ function render(c, { selecao = false, tempo = (st.motion.preview ? st.motion.tim
     if (L.oculto) continue;
     let A = tempo === null ? L : interpolate(L, tempo);
     if (A.forma === 'anelTexto' && tempo !== null && A.giro) A = { ...A, fase: (A.fase || 0) + A.giro * tempo };
+    if (A.forma === 'receita') A = { ...A, _t: tempo };
+    if (A.tipo === 'texto' && A.entrada && tempo !== null) A = aplicarEntrada(A, tempo, W(), st.motion.duration);
     if (A.tipo === 'texto' && A.modoFoco) { pilha += assinatura(A); focoPorTexto(c, A); if (A !== L) L._box = A._box; continue; }
     const sig = assinatura(A); baseAtual = quadro + '|' + pilha; pilha += sig;
     const chave = PESADOS.has(A.forma) ? pilha + '|' + quadro : null, guardado = chave && CACHE_CAMADA.get(chave);
@@ -979,6 +989,25 @@ function painel() {
     faixa('Espaço entre letras', 'esp', -.15, 1.2, .01); faixa('Entrelinha', 'entre', .7, 2.6, .05);
     secao('Forma do texto', false); faixa('Abaular', 'arco', -100, 100, 1); faixa('Esticar na horizontal', 'sx', .2, 3, .01, 1); faixa('Esticar na vertical', 'sy', .2, 3, .01, 1); faixa('Inclinar', 'incl', -45, 45, 1);
     secao('Aparência'); faixa('Girar', 'rot', -180, 180, 1); faixa('Opacidade', 'opac', .05, 1, .01, 1); faixa('Sombra', 'sombra', 0, .9, .01, 0);
+    secao('Entrada no vídeo', false); seletor('Animação de entrada (como no Video Studio)', 'entrada', ENTRADAS);
+    if (L.entrada) { faixa('Começa em (s)', 'inicio', 0, 20, .1, 0); faixa('Duração da entrada (s)', 'durEntrada', .1, 3, .05, .6); }
+    return;
+  }
+  if (L.forma === 'receita') {
+    const R = receitaPorId(L.receita);
+    secao(R?.nome || 'Estilo de palavra'); campo('Palavra', 'texto', '<input type="text">');
+    if (['anel', 'anelCabeca', 'contorno', 'cordinha', 'rotulo', 'cristal', 'destaque'].includes(L.receita)) campo(L.receita.startsWith('anel') ? 'Frase da frente' : L.receita === 'contorno' ? 'Frase que acompanha' : 'Explicação curta', 'sub', '<input type="text">');
+    if (L.receita === 'palavras') campo('Outras palavras-chave (separe por vírgula)', 'sub', '<input type="text">');
+    if (R?.objeto) { seletor('Objeto', 'obj', [['-1', 'Automático'], ...st.objetos.map((o, i) => [String(i), o.name || ('Objeto ' + (i + 1))])]); if (L.receita === 'rotulo') seletor('Ponto no objeto', 'ancora', [['top', 'Ponta de cima'], ['center', 'Centro']]); }
+    if (L.receita === 'aba') seletor('Lado', 'lado', [['esquerda', 'Esquerda'], ['direita', 'Direita']]);
+    cor('Cor', 'cor', '#ffffff'); faixa('Tamanho da letra', 'tam', 10, 500, 1);
+    if (!['palavras', 'aba', 'cordinha', 'pisca'].includes(L.receita)) { faixa('Largura', 'w', 40, W() * 1.2, 1); faixa('Altura', 'h', 20, H(), 1); }
+    if (L.receita === 'contorno') faixa('Distância da pessoa', 'margem', 0, 200, 1, 40);
+    if (L.receita === 'aba') faixa('Largura da aba', 'frac', .15, .6, .01, .36);
+    if (R?.atras) marca('Atrás da pessoa', 'atrasPessoa', true);
+    secao('Movimento'); faixa('Estado na foto parada (0 = início, 1 = fim)', 'qParado', 0, 1, .01, .7); faixa('Velocidade', 'vel', 0, 20, .1, 1);
+    faixa('Começa em (s)', 'inicio', 0, 20, .1, 0); faixa('Duração (s, 0 = até o fim do clipe)', 'dur', 0, 20, .1, 0); faixa('Opacidade', 'opac', .05, 1, .01, 1);
+    const h = document.createElement('div'); h.className = 'hint'; h.textContent = 'Mesmo desenho do Video Studio. Na aba Animar, exporte o clipe para ver o estilo em movimento.'; alvo.append(h);
     return;
   }
   if (isEditorialEffect(L.forma)) {
@@ -1644,6 +1673,18 @@ const DESFOQUES = ['vidroTexturizado', 'desfoqueDifuso', 'janelaRealidade', 'fro
 for (const k of DESFOQUES) { const b = $('editoriais').querySelector(`button[data-k="${k}"]`); if (b) $('desfoques').append(b); }
 $('desfoques').insertAdjacentHTML('afterbegin', '<button type="button" data-k="textoFoco">Palavra que recorta o foco</button>');
 $('desfoques').onclick = e => $('editoriais').onclick(e);
+$('receitas').innerHTML = RECEITAS.map(r => '<button type="button" data-r="' + r.id + '">' + r.nome + '</button>').join('');
+$('receitas').onclick = async e => {
+  const b = e.target.closest('button[data-r]'); if (!b) return; if (!st.img) return status('Escolha uma foto primeiro.', true);
+  const id = b.dataset.r, R = receitaPorId(id);
+  await Promise.all(['700 40px Neue', '500 40px Neue', '40px SpaceG', '40px AntonF', '40px SixCaps', 'italic 40px InstrSI', '700 40px GenSans', '500 40px GenSans'].map(f => document.fonts.load(f).catch(() => null)));
+  if (!st.pessoa && !st.objetos.some(o => o.kind === 'person')) await recortarPessoa();
+  if (R.objeto && !st.objetos.some(o => o.kind !== 'person')) { try { await detectar(); } catch (err) { } }
+  const mp = st.pessoa || st.objetos[pessoaIdx()]?.img, bx = mp ? caixaPessoa(mascara(mp)) : { x: W() / 2, y: H() / 2, w: W() * .6, h: H() * .7 };
+  const pal = (($('palavra').value || '').replace(/[.*|]/g, '').trim() || 'NATURAL').toUpperCase();
+  const obj = R.objeto ? Math.max(-1, st.objetos.findIndex(o => o.kind !== 'person')) : -1;
+  st.camadas.push(novaReceita(id, { W: W(), H: H(), bx, palavra: pal, obj })); st.sel = st.camadas.length - 1; registrar(); desenhar();
+};
 $('editoriais').onclick = async e => {
   const button = e.target.closest('button[data-k]'); if (!button) return;
   if (!st.img) return status('Escolha uma foto primeiro.', true);
