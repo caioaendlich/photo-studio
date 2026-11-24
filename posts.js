@@ -995,8 +995,8 @@ function painel() {
   }
   if (L.forma === 'receita') {
     const R = receitaPorId(L.receita);
-    secao(R?.nome || 'Estilo de palavra'); campo('Palavra', 'texto', '<input type="text">');
-    if (['anel', 'anelCabeca', 'contorno', 'cordinha', 'rotulo', 'cristal', 'destaque'].includes(L.receita)) campo(L.receita.startsWith('anel') ? 'Frase da frente' : L.receita === 'contorno' ? 'Frase que acompanha' : 'Explicação curta', 'sub', '<input type="text">');
+    secao(R?.nome || 'Estilo de palavra'); campo(L.receita === 'contorno' ? 'Frase que corre pelo contorno' : 'Palavra', 'texto', '<input type="text">');
+    if (['anel', 'anelCabeca', 'contorno', 'cordinha', 'rotulo', 'cristal', 'destaque'].includes(L.receita)) campo(L.receita.startsWith('anel') ? 'Frase da frente (vazio repete a palavra)' : L.receita === 'contorno' ? 'Segunda frase (opcional)' : 'Explicação curta (opcional)', 'sub', '<input type="text">');
     if (L.receita === 'palavras') campo('Outras palavras-chave (separe por vírgula)', 'sub', '<input type="text">');
     if (R?.objeto) { seletor('Objeto', 'obj', [['-1', 'Automático'], ...st.objetos.map((o, i) => [String(i), o.name || ('Objeto ' + (i + 1))])]); if (L.receita === 'rotulo') seletor('Ponto no objeto', 'ancora', [['top', 'Ponta de cima'], ['center', 'Centro']]); }
     if (L.receita === 'aba') seletor('Lado', 'lado', [['esquerda', 'Esquerda'], ['direita', 'Direita']]);
@@ -1304,7 +1304,7 @@ cv.ondblclick = e => {
   const i = camadaEm(local(e)); if (i === undefined) return;
   const L = st.camadas[i]; st.sel = i;
   if (L.tipo === 'molde') { abrirAba('texto'); $('palavra').focus(); $('palavra').select(); desenhar(); return; }
-  if (L.tipo === 'texto') editarNaArte(L);
+  if (L.tipo === 'texto' || L.forma === 'receita') editarNaArte(L);
   else if (L.forma === 'caixa') { desenhar(); $('props').querySelector('input[type=text]')?.focus(); }
 };
 function editarNaArte(L) {
@@ -1681,9 +1681,15 @@ $('receitas').onclick = async e => {
   if (!st.pessoa && !st.objetos.some(o => o.kind === 'person')) await recortarPessoa();
   if (R.objeto && !st.objetos.some(o => o.kind !== 'person')) { try { await detectar(); } catch (err) { } }
   const mp = st.pessoa || st.objetos[pessoaIdx()]?.img, bx = mp ? caixaPessoa(mascara(mp)) : { x: W() / 2, y: H() / 2, w: W() * .6, h: H() * .7 };
-  const pal = (($('palavra').value || '').replace(/[.*|]/g, '').trim() || 'NATURAL').toUpperCase();
-  const obj = R.objeto ? Math.max(-1, st.objetos.findIndex(o => o.kind !== 'person')) : -1;
-  st.camadas.push(novaReceita(id, { W: W(), H: H(), bx, palavra: pal, obj })); st.sel = st.camadas.length - 1; registrar(); desenhar();
+  // Caio 24/11 20:44: com um texto (ou outro estilo) selecionado, o estilo é aplicado nele, mantendo as palavras;
+  // sem nada selecionado, cria um texto novo com a palavra padrão TEXTO.
+  const S = st.camadas[st.sel], alvoTexto = S && (S.tipo === 'texto' || S.forma === 'receita');
+  const pal = alvoTexto ? String(S.texto || '').replace(/\*/g, '').replace(/\s*\n\s*/g, ' ').trim() || 'TEXTO' : 'TEXTO';
+  const obj = R.objeto ? (S?.forma === 'receita' && S.obj >= 0 ? S.obj : Math.max(-1, st.objetos.findIndex(o => o.kind !== 'person'))) : -1;
+  const L = novaReceita(id, { W: W(), H: H(), bx, palavra: pal, frase: S?.forma === 'receita' ? S.sub || '' : '', obj });
+  if (S?.forma === 'receita') { L.cor = S.cor || L.cor; L.vel = S.vel ?? L.vel; L.inicio = S.inicio || 0; L.dur = S.dur || 0; }
+  if (alvoTexto) st.camadas[st.sel] = L; else { st.camadas.push(L); st.sel = st.camadas.length - 1; }
+  registrar(); desenhar();
 };
 $('editoriais').onclick = async e => {
   const button = e.target.closest('button[data-k]'); if (!button) return;
@@ -1758,7 +1764,7 @@ function menuDoToque(e, p) {
   if (L) { st.sel = i; desenhar(); }
   const pi = typeof pessoaIdx === 'function' ? pessoaIdx() : -1, atrasPessoa = L && Array.isArray(L.atras) && pi >= 0 && L.atras.includes(pi);
   const itens = [];
-  if (L && (L.tipo === 'texto' || L.tipo === 'molde' || L.forma === 'caixa')) itens.push(['✎', 'Editar texto', () => cv.ondblclick?.(e)]);
+  if (L && (L.tipo === 'texto' || L.tipo === 'molde' || L.forma === 'caixa' || L.forma === 'receita')) itens.push(['✎', 'Editar texto', () => cv.ondblclick?.(e)]);
   if (L) itens.push(['⧉', 'Duplicar', duplicar], ['↑', 'Trazer para frente', () => reordenar(1)], ['↓', 'Enviar para trás', () => reordenar(-1)]);
   if (L && Array.isArray(L.atras) && pi >= 0) itens.push(['◐', atrasPessoa ? 'Passar na frente da pessoa' : 'Passar atrás da pessoa', () => { L.atras = atrasPessoa ? L.atras.filter(x => x !== pi) : [...L.atras, pi]; registrar(); redesenhar(); }]);
   if (L) itens.push(['◌', L.oculto ? 'Mostrar' : 'Esconder', () => { L.oculto = !L.oculto; registrar(); desenhar(); }]);

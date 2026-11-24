@@ -45,8 +45,6 @@ export function novaReceita(id, { W, H, bx, palavra = 'NATURAL', frase = '', obj
     cristal: { x: W / 2, y: H / 2, w: 300 * S, h: 300 * S, tam: 46 * S },
     destaque: { x: W / 2, y: H / 2, w: 300 * S, h: 300 * S, tam: 46 * S },
   }[id] || { x: W / 2, y: H / 2, w: 400 * S, h: 200 * S, tam: 100 * S };
-  if (id === 'contorno' || id === 'anel' || id === 'anelCabeca') base.sub = frase || 'CAIO ENDLICH';
-  if (id === 'palavras') base.sub = frase || 'PELE · LUZ · TEXTURA';
   if (id === 'rotulo') { base.ancora = 'top'; base.palavraAuto = true; }
   return { ...base, ...g, tam: g.tam || 100 * S };
 }
@@ -251,7 +249,7 @@ function anelDesenho({ tc, fc, F, S, q, cor, TXT }) {
   const cx = F.x, cy = F.y, rx = Math.max(20, F.w / 2), ry = Math.max(8, F.h / 2), fs = F.tam, sp = 8 * S, two = 2 * Math.PI;
   const run = (q - .5) * .12 * Math.PI * clamp(+F.vel || 1, 0, 20) * (F._t == null ? 1 : 6);
   for (const [g, a0] of [[tc, Math.PI], [fc, 0]]) { g.save(); g.strokeStyle = 'rgba(255,255,255,.78)'; g.lineWidth = 4 * S; g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, a0, a0 + Math.PI); g.stroke(); g.restore(); }
-  const frente = String(F.sub || '');
+  const frente = String(F.sub || F.texto || '');
   const palavras = [[TXT, `${fs}px SpaceG`, fs, sp, 1.5 * Math.PI], [frente, `italic ${fs * .8}px InstrSI`, fs * .8, 2 * S, .5 * Math.PI]];
   for (const [txt, fonte, tam, spc, home] of palavras) {
     if (!txt) continue; tc.font = fonte;
