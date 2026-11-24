@@ -1,4 +1,4 @@
-const C='ps-app-202611241905', M='ps-modelos-1';
+const C='ps-app-202611241920', M='ps-modelos-1';
 const MODELOS=/\/(celular\/(modnet\.onnx|ort-wasm(-simd)?\.wasm|ort\.wasm\.min\.js)|fonts\/)/;
 self.addEventListener('install',e=>self.skipWaiting());
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C&&k!==M).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));

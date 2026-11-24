@@ -1709,12 +1709,35 @@ if (ehCelular()) {
   $('exportarVideo').textContent = $('exportarVideo').dataset.rotulo = 'Clipe'; $('exportar').textContent = 'PNG';
   if (window.PHOTO_STUDIO_AUTONOMO) { $('rail').querySelector('[data-tab="ia"]')?.remove(); const t = $('projetosDlg').querySelector('.pj-sub'); if (t) t.textContent = 'Salvos neste celular, com salvamento automático.'; }
 }
+// toque duplo no celular (Caio 24/11/2026 19:17): menu do que dá para fazer com o objeto tocado, direto na tela
+function fecharMenuToque() { $('menuToque')?.remove(); }
+function menuDoToque(e, p) {
+  fecharMenuToque();
+  const i = camadaEm(p), L = i === undefined ? null : st.camadas[i];
+  if (L) { st.sel = i; desenhar(); }
+  const pi = typeof pessoaIdx === 'function' ? pessoaIdx() : -1, atrasPessoa = L && Array.isArray(L.atras) && pi >= 0 && L.atras.includes(pi);
+  const itens = [];
+  if (L && (L.tipo === 'texto' || L.tipo === 'molde' || L.forma === 'caixa')) itens.push(['✎', 'Editar texto', () => cv.ondblclick?.(e)]);
+  if (L) itens.push(['⧉', 'Duplicar', duplicar], ['↑', 'Trazer para frente', () => reordenar(1)], ['↓', 'Enviar para trás', () => reordenar(-1)]);
+  if (L && Array.isArray(L.atras) && pi >= 0) itens.push(['◐', atrasPessoa ? 'Passar na frente da pessoa' : 'Passar atrás da pessoa', () => { L.atras = atrasPessoa ? L.atras.filter(x => x !== pi) : [...L.atras, pi]; registrar(); redesenhar(); }]);
+  if (L) itens.push(['◌', L.oculto ? 'Mostrar' : 'Esconder', () => { L.oculto = !L.oculto; registrar(); desenhar(); }]);
+  itens.push(['↶', 'Desfazer', () => voltar(-1)], ['↷', 'Refazer', () => voltar(1)]);
+  if (L) itens.push(['🗑', 'Apagar', apagar, 'perigo']);
+  const m = document.createElement('div'); m.id = 'menuToque';
+  m.innerHTML = (L ? `<p>${String(L.nome || L.texto || 'Objeto').replace(/[&<>"']/g, '').slice(0, 28)}</p>` : '<p>Foto</p>') + itens.map((it, k) => `<button data-k="${k}" class="${it[3] || ''}"><span>${it[0]}</span>${it[1]}</button>`).join('');
+  document.body.appendChild(m);
+  const r = m.getBoundingClientRect(), x = Math.min(Math.max(8, e.clientX - r.width / 2), innerWidth - r.width - 8), y = Math.min(Math.max(8, e.clientY + 14), innerHeight - r.height - 8);
+  m.style.left = x + 'px'; m.style.top = y + 'px';
+  m.onclick = ev => { const b = ev.target.closest('button'); if (!b) return; const it = itens[+b.dataset.k]; fecharMenuToque(); it[2](); };
+  setTimeout(() => document.addEventListener('pointerdown', function fora(ev) { if (!ev.target.closest('#menuToque')) { fecharMenuToque(); document.removeEventListener('pointerdown', fora, true); } }, true), 0);
+}
 // dois dedos: com uma camada selecionada, aumenta, diminui e gira a camada; sem seleção, aproxima e move a foto
 const toques = new Map(); let pinca = null, ultimoToque = null;
 const baixoOriginal = cv.onpointerdown, moverOriginal = cv.onpointermove, cimaOriginal = cv.onpointerup;
 const geo = () => { const [a, b] = [...toques.values()]; return { d: Math.hypot(b.x - a.x, b.y - a.y) || 1, ang: Math.atan2(b.y - a.y, b.x - a.x), m: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } }; };
 cv.onpointerdown = e => {
   if (e.pointerType === 'touch') {
+    if (e.isPrimary) { toques.clear(); pinca = null; } // primeiro dedo de um toque novo: descarta toques que não terminaram
     toques.set(e.pointerId, local(e));
     if (toques.size === 2) {
       gesto = null; st.guias = null; const g = geo(), L = st.camadas[st.sel];
@@ -1724,7 +1747,7 @@ cv.onpointerdown = e => {
     if (toques.size > 2) return;
     // toque duplo = editar o texto (o iPhone nem sempre manda dblclick)
     const agora = performance.now(), p = local(e);
-    if (ultimoToque && agora - ultimoToque.t < 320 && Math.hypot(p.x - ultimoToque.p.x, p.y - ultimoToque.p.y) < 40 * px()) { ultimoToque = null; cv.ondblclick?.(e); return; }
+    if (ultimoToque && agora - ultimoToque.t < 320 && Math.hypot(p.x - ultimoToque.p.x, p.y - ultimoToque.p.y) < 40 * px()) { ultimoToque = null; menuDoToque(e, p); return; }
     ultimoToque = { t: agora, p };
   }
   baixoOriginal(e);
