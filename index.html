@@ -1,0 +1,236 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Photo Studio"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><meta name="theme-color" content="#0b0c0c"><title>Photo Studio</title><link rel="stylesheet" href="style.css">
+<!-- v3 (24/11/2026, Claude): layout de editor atual. Trilho de abas, barra de ferramentas, inspetor por seções, linha do tempo. Os ids usados por posts.js foram mantidos. -->
+<style>
+:root{--bg:#0e0f0f;--panel:#151716;--panel2:#1b1e1c;--line:#262a28;--line2:#323734;--txt:#e9ebe6;--mute:#8d958b;--acc:#c6f578;--acc2:#2c3624}
+body{background:var(--bg);overflow:hidden}
+header{height:56px;padding:0 16px}.brand{font-size:14px}.brand b{font-size:22px}nav{gap:14px;font-size:12px}nav a{color:var(--mute)!important;text-decoration:none}nav a:hover{color:var(--txt)!important}nav .active{padding:6px 10px;font-size:12px}
+.head-actions{gap:8px}.head-actions button,.post-open-label{padding:7px 12px;font-size:12px;border-radius:8px;border:1px solid var(--line2);background:var(--panel2);color:var(--txt);cursor:pointer;display:inline-flex;align-items:center}.head-actions .primary{background:var(--acc);color:#16200d;border-color:var(--acc)}
+.app{display:grid;grid-template-columns:64px 288px 1fr 300px;height:calc(100vh - 56px)}
+/* trilho */
+.rail{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:4px}
+.rail button{width:52px;height:56px;border:0;background:transparent;border-radius:10px;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:9.5px;color:var(--mute);letter-spacing:.2px}
+.rail button svg{width:20px;height:20px}.rail button:hover{background:var(--panel2);color:var(--txt)}.rail button.on{background:var(--acc2);color:var(--acc)}
+/* painel de abas */
+.drawer{background:var(--panel);border-right:1px solid var(--line);overflow:auto;padding:16px 14px 30px}
+.tab{display:none}.tab.on{display:block}
+.drawer h2{font-size:13px;font-weight:600;margin:2px 0 14px;letter-spacing:.2px}
+.drawer h3{font-size:10px;letter-spacing:1.6px;color:var(--mute);font-weight:500;margin:20px 0 9px;text-transform:uppercase}
+.drawer label{display:block;font-size:11px;color:#b3bab0;margin:9px 0}.drawer label input,.drawer label textarea,.drawer label select{margin-top:5px}
+.drawer textarea{min-height:58px;resize:vertical;font-size:12px}
+.drop,.drawer label.drop{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--panel2);border:1px dashed #4c5a44;padding:18px 10px;border-radius:12px;text-align:center;cursor:pointer;font-size:12px;color:#cfd6c9}.drop:hover{border-color:var(--acc)}.drop input{display:none}.drop small{color:var(--mute);font-size:10.5px}
+.seg{display:flex;gap:4px;background:var(--bg);border:1px solid var(--line2);border-radius:9px;padding:3px}.seg button{flex:1;padding:6px 8px;font-size:11px;border:0;background:transparent;border-radius:6px;color:var(--mute)}.seg button.on{background:var(--panel2);color:var(--txt);box-shadow:0 1px 0 #0006}
+.mini-tools{display:flex;gap:6px;margin-top:6px}.mini-tools button{font-size:10.5px;padding:5px 8px;border-radius:6px;background:var(--panel2)}
+.thumbs{display:grid;grid-template-columns:1fr 1fr;gap:8px}.thumb{padding:0;border-radius:10px;overflow:hidden;background:#000;position:relative;border:1px solid var(--line2)}.thumb:hover{border-color:#6b7c5f}
+.thumb canvas{display:block;width:100%}.thumb span{position:absolute;left:6px;bottom:6px;background:#000c;font-size:10px;padding:3px 7px;border-radius:20px}.thumb.on{outline:2px solid var(--acc);outline-offset:-2px}
+.add-big{width:100%;display:flex;gap:10px;align-items:center;padding:12px;border-radius:10px;background:var(--panel2);font-size:12px;text-align:left}.add-big b{font-size:20px;line-height:1;color:var(--acc)}
+.elems{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.elems button{padding:10px 2px 8px;font-size:10px;display:flex;flex-direction:column;align-items:center;gap:6px;border-radius:10px;background:var(--panel2);border-color:var(--line2)}.elems svg{width:30px;height:22px}
+.editorial-effects{grid-template-columns:1fr 1fr}.editorial-effects button{min-height:54px;padding:8px;line-height:1.3;font-size:11px;font-weight:500;align-items:flex-start;text-align:left}
+.hint{color:var(--mute);font-size:11px;line-height:1.55;margin:6px 0}
+/* palco */
+.stagecol{display:flex;flex-direction:column;min-width:0;min-height:0;background:#0b0c0c}
+.toolbar{height:48px;display:flex;align-items:center;gap:6px;padding:0 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+.toolbar .sep{width:1px;height:22px;background:var(--line2);margin:0 6px}
+.ib{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid transparent;background:transparent;color:#c9cfc5}.ib:hover{background:var(--panel2);border-color:var(--line2)}.ib svg{width:17px;height:17px}.ib:disabled{opacity:.3}
+#zoomLabel{font-size:11px;min-width:46px;text-align:center;color:#c9cfc5;font-variant-numeric:tabular-nums;background:transparent;border:0;padding:4px}
+.toolbar .selname{margin-left:auto;font-size:11px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.pstage{flex:1;min-height:0;overflow:auto;display:grid;place-items:center;padding:8px;background:radial-gradient(ellipse at center,#1d211c 0,#0b0c0c 70%);position:relative}
+.canvas-wrap{position:relative;line-height:0}
+#canvas{box-shadow:0 20px 70px #000a,0 0 0 1px #ffffff10;touch-action:none;background:#000;cursor:default;border-radius:2px}
+.empty{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}.empty .drop{pointer-events:auto;width:300px;padding:34px 20px;background:#151716ee}
+.empty.hide{display:none}
+#inlineEdit{position:absolute;display:none;background:#000a;color:#fff;border:1px solid var(--acc);border-radius:4px;padding:6px;font:600 16px system-ui;line-height:1.3;resize:none;z-index:5;width:auto}
+/* toast */
+.pstatus{position:fixed;left:76px;bottom:14px;width:264px;background:#1d211ef2;border:1px solid var(--line2);color:#dfe5da;font-size:12px;padding:9px 14px;border-radius:10px;max-width:80%;box-shadow:0 8px 30px #0008;transition:opacity .3s;z-index:6;line-height:1.45}.pstatus.error{border-color:#7a4a43;color:#ffc5bb}.pstatus.hide{opacity:0;pointer-events:none}
+/* linha do tempo */
+.timeline{height:auto;border-top:1px solid var(--line);background:var(--panel);padding:10px 14px 12px}
+.tl-row{display:flex;align-items:center;gap:8px}.tl-row button{padding:6px 10px;font-size:11px;border-radius:7px;background:var(--panel2)}
+#motionPlay{width:34px;height:34px;padding:0;border-radius:50%;background:var(--acc);color:#16200d;border:0;font-size:13px}
+#motionClock{font-size:11px;color:#c9cfc5;font-variant-numeric:tabular-nums;min-width:74px}
+.tl-track{position:relative;flex:1;height:30px}.tl-track input{position:absolute;inset:8px 0 0;width:100%;margin:0;accent-color:var(--acc)}
+.kf{position:absolute;top:0;width:10px;height:10px;transform:translateX(-5px) rotate(45deg);background:var(--acc);border:1px solid #0b0c0c;cursor:pointer}
+.tl-dur{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mute)}.tl-dur input{width:52px;padding:5px;font-size:11px}
+#motionHint{margin:6px 0 0;font-size:10.5px}
+.toolbar.side{height:auto;flex-wrap:wrap;gap:2px;padding:8px 10px;border-bottom:1px solid var(--line)}.toolbar.side .sep{height:18px;margin:0 3px}
+.selname{font-size:11px;color:var(--mute);padding:8px 14px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-col{display:flex;flex-direction:column;gap:10px}.tl-col .tl-track{width:100%}.tl-col button{padding:8px;font-size:11.5px;border-radius:8px;background:var(--panel2)}
+.tl-col .tl-play{display:flex;align-items:center;gap:10px}.tl-col .tl-track{height:28px;flex:none}
+/* inspetor */
+.inspector{background:var(--panel);border-left:1px solid var(--line);overflow:auto;display:flex;flex-direction:column}
+.insp-sec{border-bottom:1px solid var(--line);padding:12px 14px}
+.insp-sec h3{font-size:10px;letter-spacing:1.6px;color:var(--mute);font-weight:500;margin:0 0 9px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.layers{display:flex;flex-direction:column;gap:2px;max-height:38vh;overflow:auto}
+.layer{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;font-size:12px;cursor:pointer;border:1px solid transparent;color:#d6dbd2}.layer:hover{background:var(--panel2)}.layer.on{background:var(--acc2);border-color:#4b5d3b;color:#e8f7d4}
+.layer .ic{width:22px;height:22px;border-radius:5px;background:var(--bg);display:grid;place-items:center;font-size:11px;color:var(--mute);flex:none}.layer .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.layer .bd{font-size:9px;color:var(--acc)}.layer .eye{opacity:.55;border:0;background:transparent;padding:2px;width:22px;height:22px}.layer .eye:hover{opacity:1}.layer.off .nm{opacity:.4}
+.layer-actions{display:flex;gap:4px;margin-top:8px}.layer-actions button{flex:1;padding:6px 0;font-size:10.5px;border-radius:7px;background:var(--panel2)}
+#props details{border:0;border-bottom:1px solid var(--line);margin:0;padding:0;border-radius:0;background:none}#props summary{list-style:none;cursor:pointer;padding:11px 14px;font-size:10px;letter-spacing:1.6px;color:var(--mute);text-transform:uppercase;display:flex;justify-content:space-between}#props summary::after{content:'+';font-size:13px}#props details[open] summary::after{content:'–'}#props summary::-webkit-details-marker{display:none}
+#props .body{padding:0 14px 12px}
+.f{display:block;font-size:11px;color:#b3bab0;margin:8px 0}.f .r{display:flex;align-items:center;gap:8px;margin-top:4px}.f .r input[type=range]{flex:1;accent-color:var(--acc)}.f .r input[type=number]{width:62px;padding:4px 6px;font-size:11px;text-align:right}
+.f select,.f textarea,.f input[type=text],.f input:not([type]){margin-top:4px;font-size:12px;padding:7px}.f .cr{display:flex;gap:6px;margin-top:4px}.f .cr input[type=color]{width:38px;height:30px;padding:2px;flex:none;margin:0}.f .cr input[type=text]{margin:0;font-family:ui-monospace,monospace;font-size:11px}
+.chk{display:flex!important;align-items:center;gap:8px;font-size:11.5px;color:#cfd6c9;margin:8px 0}.chk input{width:auto;margin:0;accent-color:var(--acc)}
+.objs .chk{margin:5px 0}.empty-note{font-size:11px;color:var(--mute);line-height:1.5;padding:4px 0}
+.btn-wide{width:100%;padding:8px;font-size:11.5px;border-radius:8px;background:var(--panel2)}
+body.image-drag-over::after{content:"Solte a imagem para usar como fundo";position:fixed;inset:12px;z-index:9999;display:grid;place-items:center;pointer-events:none;border:3px dashed #b5ddca;border-radius:12px;background:#14251ee6;color:#fff;font:600 24px system-ui}
+@media(max-width:1200px){.app{grid-template-columns:58px 250px 1fr 270px}}
+.salvo-em{font-size:11px;color:var(--mute);margin-right:4px;white-space:nowrap}
+.projetos-dlg{background:var(--panel);color:var(--txt);border:1px solid var(--line2);border-radius:14px;width:min(1100px,92vw);max-height:84vh;padding:0;overflow:hidden}.projetos-dlg::backdrop{background:#000a}
+.pj-head{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}.pj-head b{font-size:15px;font-weight:600}.pj-sub{font-size:12px;color:var(--mute)}
+.pj-head button,.pj-head .post-open-label{padding:7px 12px;font-size:12px;border-radius:8px;border:1px solid var(--line2);background:var(--panel2);color:var(--txt);cursor:pointer;display:inline-flex;align-items:center}
+.pj-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;padding:20px;overflow:auto;max-height:calc(84vh - 70px)}
+.pj-card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}.pj-card.atual{border-color:var(--acc)}
+.pj-capa{aspect-ratio:4/5;background:#000 center/cover no-repeat;cursor:pointer;border:0;padding:0;width:100%}.pj-card .pj-info{padding:9px 10px;display:flex;flex-direction:column;gap:3px}
+.pj-nome{font-size:13px;font-weight:600;background:none;border:1px solid transparent;color:var(--txt);padding:2px 4px;border-radius:5px;width:100%}.pj-nome:hover,.pj-nome:focus{border-color:var(--line2);outline:0}
+.pj-data{font-size:11px;color:var(--mute);padding:0 4px}.pj-acoes{display:flex;gap:6px;padding:0 10px 10px}.pj-acoes button{flex:1;padding:6px;font-size:11px;border-radius:7px;border:1px solid var(--line2);background:var(--panel);color:var(--txt);cursor:pointer}
+.pj-acoes .perigo{color:#ffb4a8}.pj-acoes .perigo.confirmar{background:#5a2a24;border-color:#8a453c;color:#fff}.pj-vazio{color:var(--mute);font-size:13px;padding:30px;grid-column:1/-1;text-align:center}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center}.recentes{pointer-events:auto;margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:620px}.recentes .rc-tit{width:100%;text-align:center;font-size:12px;color:var(--mute)}
+.recentes button{width:96px;padding:0;border:1px solid var(--line2);border-radius:8px;background:var(--panel2);color:var(--txt);cursor:pointer;overflow:hidden;font-size:11px}.recentes button span{display:block;aspect-ratio:4/5;background:#000 center/cover no-repeat}.recentes button em{display:block;font-style:normal;padding:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.assin-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}.assin-btns button{padding:8px 6px;font-size:11px;border-radius:8px;border:1px solid var(--line2);background:var(--panel2);color:var(--txt);cursor:pointer}.assin-btns button:hover{border-color:var(--acc)}
+#iaPedido{width:100%;margin:10px 0 8px;font-size:13px;line-height:1.45;resize:vertical}.primary-wide{background:var(--acc)!important;color:#16200d!important;border-color:var(--acc)!important;font-weight:600}.ia-resumo{font-size:12px;line-height:1.5;color:var(--txt);background:var(--panel2);border:1px solid var(--line2);border-radius:8px;padding:10px;margin:10px 0;display:none}.ia-resumo.on{display:block}
+.fp-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0 4px}.fp-grid button{padding:8px 6px;font-size:11px;border-radius:8px;border:1px solid var(--line2);background:var(--panel2);color:var(--txt);cursor:pointer}.fp-grid button.on{border-color:var(--acc);color:var(--acc);background:var(--acc2)}.fp-row{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#cfd6c9;margin:7px 0}.fp-row span{flex:0 0 92px}.fp-row input[type=range]{flex:1}.fp-row output{flex:0 0 30px;text-align:right;color:var(--mute);font-size:11px}#fundoPainel h4{font-size:10.5px;letter-spacing:1.5px;color:var(--mute);font-weight:500;text-transform:uppercase;margin:16px 0 4px}
+/* ---------- celular (Photo Studio no iPhone, 24/11/2026): foto em cima, painel embaixo, abas numa barra no rodapé ---------- */
+body.celular{padding:0;height:100dvh;overflow:hidden;-webkit-user-select:none;user-select:none}
+body.celular header{height:46px;padding:0 10px;padding-top:env(safe-area-inset-top);box-sizing:content-box}
+body.celular header nav,body.celular #salvarProjeto,body.celular .brand span{display:none}
+body.celular .brand::after{content:'PHOTO STUDIO';font-size:11px;letter-spacing:2px;color:var(--mute);margin-left:6px}
+body.celular .head-actions{gap:6px;margin-left:auto}body.celular .head-actions button{padding:7px 10px;font-size:12px;white-space:nowrap}body.celular .salvo-em{display:none}
+body.celular .app{display:flex;flex-direction:column;height:calc(100dvh - 46px - env(safe-area-inset-top));grid-template-columns:none}
+body.celular .stagecol{order:1;flex:0 0 50dvh;min-height:0;display:flex;overflow:hidden}body.celular .drawer{order:2}body.celular .inspector{order:3}body.celular .brand{font-size:0}body.celular .brand b{font-size:16px}
+body.celular .pstage{padding:6px}
+body.celular .drawer,body.celular .inspector{flex:1;min-height:0;border:0;border-top:1px solid var(--line);padding-bottom:calc(74px + env(safe-area-inset-bottom))}
+body.celular .inspector{display:none}body.celular.ver-ajustes .inspector{display:flex}body.celular.ver-ajustes .drawer{display:none}
+body.celular .rail{position:fixed;left:0;right:0;bottom:0;z-index:30;flex-direction:row;justify-content:flex-start;overflow-x:auto;padding:6px 6px calc(6px + env(safe-area-inset-bottom));gap:2px;border:0;border-top:1px solid var(--line);height:auto}
+body.celular .rail button{flex:0 0 64px;min-height:52px}
+body.celular .pstatus{left:10px;right:10px;bottom:calc(80px + env(safe-area-inset-bottom));max-width:none}
+body.celular input,body.celular select,body.celular textarea{font-size:16px}
+body.celular .projetos-dlg{width:100vw;max-width:100vw;max-height:92dvh;margin:auto 0 0;border-radius:16px 16px 0 0}
+body.celular .pj-head{flex-wrap:wrap}body.celular .pj-lista{grid-template-columns:repeat(2,1fr);gap:10px;padding:12px}
+body.celular .toolbar.side{flex-wrap:wrap}
+</style></head><body>
+<header><div class="brand"><b>◉</b> CAIO <span>VIDEO STUDIO</span></div>
+<nav><a href="index.html">Edição manual</a><a href="montage.html">Montagem por blocos</a><button class="active">Photo Studio</button><a href="estilo.html">Estilo</a></nav>
+<div class="head-actions"><span id="salvoEm" class="salvo-em"></span><button id="projetosBtn">Projetos</button><button id="salvarProjeto">Salvar</button><button id="exportarVideo">Exportar clipe</button><button class="primary" id="exportar">Exportar PNG</button></div></header>
+
+<div class="app">
+<nav class="rail" id="rail">
+  <button data-tab="foto" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/></svg>Foto</button>
+  <button data-tab="fundo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 15l5-5 4 4 3-3 6 6"/><circle cx="12" cy="8.5" r="2.2" fill="currentColor" opacity=".35"/></svg>Fundo</button>
+  <button data-tab="ia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/></svg>IA</button>
+  <button data-tab="texto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg>Texto</button>
+  <button data-tab="efeitos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="7"/><path d="M12 5a7 7 0 000 14z" fill="currentColor" opacity=".35"/></svg>Efeitos</button>
+  <button data-tab="desfoques"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8" stroke-dasharray="2 2.5"/><circle cx="12" cy="12" r="3.5"/></svg>Desfoques</button>
+  <button data-tab="animar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M10 8l6 4-6 4z" fill="currentColor"/></svg>Animar</button>
+  <button data-tab="elementos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="4"/><rect x="13" y="13" width="7" height="7" rx="1"/><path d="M4 20l6-6"/></svg>Elementos</button>
+</nav>
+
+<aside class="drawer">
+  <section class="tab on" data-tab="foto">
+    <h2>Foto e formato</h2>
+    <label class="drop"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>Trocar a foto<small>ou arraste uma imagem para a tela</small><input type="file" id="arquivo" accept="image/*"></label>
+    <h3>Formato</h3>
+    <div class="seg" id="formato"><button data-v="feed" class="on">Feed 4:5</button><button data-v="story">Story 9:16</button></div>
+    <h3>Enquadramento</h3>
+    <div class="hint">Arraste a foto num ponto sem camada: ela pode sair da tela e volta encaixando no centro e nas bordas (linhas rosa). Dois dedos na trackpad (ou ⌥ + roda) aproximam ou afastam a foto a partir do cursor. Segure ⌥ ao arrastar para soltar sem ímã.</div>
+    <input type="hidden" id="fx" value="0.5"><input type="hidden" id="fy" value="0.5"><input type="hidden" id="fz" value="1"><input type="hidden" id="ox" value="0"><input type="hidden" id="oy" value="0">
+    <button class="btn-wide" id="enquadrarReset">Centralizar a foto</button>
+    <h3>Assinatura</h3>
+    <input type="hidden" id="assinatura" value="">
+    <div class="assin-btns" id="assinBtns"><button data-a="nome">+ CAIO ENDLICH</button><button data-a="arroba">+ @caioendlich.md</button><button data-a="dr">+ Dr. Caio Endlich</button><button data-a="crm">+ Dr. Caio Endlich · CRM</button></div>
+    <div class="hint">Entra como um texto comum: dá para mover, mudar a fonte e apagar.</div>
+  </section>
+
+  <section class="tab" data-tab="fundo">
+    <h3>Fundo e ambiente</h3>
+    <div class="hint">Os tratamentos da Montagem, na foto: o fundo, a pessoa e a frente são tratados separados, criando planos. Os textos podem passar entre eles.</div>
+    <div id="fundoPainel"></div>
+  </section>
+  <section class="tab" data-tab="ia">
+    <h3>Montar com IA</h3>
+    <div class="hint">Escreva o que você quer. A IA olha a foto e monta enquadramento, textos, efeitos e elementos como camadas editáveis, seguindo a tipografia e a linguagem do consultório.</div>
+    <textarea id="iaPedido" rows="7" placeholder="Ex.: post sério sobre laser de CO₂, título curto em cima com General Sans e uma frase menor embaixo dizendo que a recuperação é acompanhada de perto. Nada sobre o rosto."></textarea>
+    <label class="chk"><input type="checkbox" id="iaManter"> Manter as camadas que já estão na arte</label>
+    <button class="btn-wide primary-wide" id="iaMontar">Montar com IA</button>
+    <div class="ia-resumo" id="iaResumo"></div>
+    <div class="hint">Leva uns segundos e usa a mesma chave de API da Montagem. Desfazer (⌘Z) volta as camadas de antes.</div>
+  </section>
+  <section class="tab" data-tab="texto">
+    <h2>Texto</h2>
+    <button class="add-big" id="addTexto"><b>+</b> Adicionar texto livre</button>
+    <h3>Conteúdo dos estilos</h3>
+    <label>Frase<textarea id="frase">QUANDO TODO ROSTO SAI *IGUAL*,|ALGUÉM *PAROU* DE OLHAR PARA</textarea></label>
+    <div class="mini-tools"><button id="fraseNegrito" title="Selecione palavras na frase e toque aqui"><b>N</b> Negrito na seleção</button><button id="fraseQuebra">↵ Quebrar linha</button></div>
+    <label>Palavra grande<input id="palavra" value="VOCÊ."></label>
+    <h3>Estilos</h3>
+    <div class="thumbs" id="thumbs"></div>
+    <div class="hint">Os estilos marcados "planos" detectam a pessoa e os objetos e passam a palavra por trás deles.</div>
+  </section>
+
+  <section class="tab" data-tab="efeitos">
+    <h2>Intervenções na foto</h2>
+    <div class="elems editorial-effects" id="editoriais"></div>
+    <div class="hint">O efeito entra abaixo dos textos. Arraste na arte para posicionar e ajuste à direita.</div>
+  </section>
+
+  <section class="tab" data-tab="desfoques">
+    <h2>Desfoques e vidros</h2>
+    <div class="elems editorial-effects" id="desfoques"></div>
+    <div class="hint">Cada desfoque é uma camada: arraste, redimensione e ajuste à direita. Dá para combinar mais de um.</div>
+  </section>
+
+  <section class="tab" data-tab="elementos">
+    <h2>Elementos gráficos</h2>
+    <div class="elems" id="elems"></div>
+    <h3>Recorte fotográfico</h3>
+    <label class="drop"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>Adicionar PNG recortado<input type="file" id="objetoPng" accept="image/png,image/webp,image/*"></label>
+  </section>
+    <section class="tab" data-tab="animar">
+    <h2>Animação</h2>
+    <div class="tl-col">
+      <div class="tl-play"><button id="motionPlay" title="Prévia da animação">▶</button><span id="motionClock">0.00 s</span><label class="tl-dur" style="margin-left:auto">Duração <input id="motionDuration" type="number" min="2" max="20" step="1" value="6"> s</label></div>
+      <div class="tl-track" id="tlTrack"><input id="motionTime" type="range" min="0" max="6" value="0" step=".033333"></div>
+      <button id="motionMark" title="Grava a posição da camada neste instante">◆ Gravar ponto da camada selecionada</button>
+      <div style="display:flex;gap:6px"><button id="motionDelete" style="flex:1">Excluir ponto</button><button id="motionEdit" style="flex:1" title="Traz a camada para o estado deste instante, para editar">Editar aqui</button></div>
+    </div>
+    <div class="hint" id="motionHint">Selecione uma camada, grave um ponto, avance o tempo, mova a camada e grave outro ponto. Os losangos na barra são os pontos gravados.</div>
+  </section>
+</aside>
+
+<section class="stagecol">
+  <div class="pstage" id="pstage">
+    <div class="canvas-wrap" id="canvasWrap"><canvas id="canvas" width="1080" height="1350"></canvas><textarea id="inlineEdit" spellcheck="false"></textarea></div>
+    <div class="empty" id="empty"><label class="drop"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/></svg><b style="font-weight:600">Comece por uma foto</b><small>Clique para escolher ou arraste para cá</small><input type="file" id="arquivoVazio" accept="image/*"></label><div class="recentes" id="recentes"></div></div>
+    <div class="pstatus hide" id="status"></div>
+  </div>
+</section>
+
+<aside class="inspector">
+  <div class="toolbar side">
+    <button class="ib" id="desfazer" title="Desfazer (⌘Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg></button>
+    <button class="ib" id="refazer" title="Refazer (⇧⌘Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></svg></button>
+    <span class="sep"></span>
+    <button class="ib" id="zoomMenos" title="Diminuir zoom">−</button><button id="zoomLabel" title="Ajustar à tela">Ajustar</button><button class="ib" id="zoomMais" title="Aumentar zoom">+</button>
+    <span class="sep"></span>
+    <button class="ib" id="tbFrente" title="Trazer para frente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="8" y="3" width="13" height="13" rx="2" fill="currentColor" opacity=".25"/><rect x="3" y="8" width="13" height="13" rx="2"/></svg></button>
+    <button class="ib" id="tbTras" title="Enviar para trás"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="8" width="13" height="13" rx="2" fill="currentColor" opacity=".25"/><rect x="8" y="3" width="13" height="13" rx="2"/></svg></button>
+    <button class="ib" id="tbDuplicar" title="Duplicar (⌘D)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3"/></svg></button>
+    <button class="ib" id="tbApagar" title="Apagar (Delete)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
+      </div>
+  <div class="selname" id="selName"></div>
+  <div class="insp-sec">
+    <h3>Camadas</h3>
+    <div class="layers" id="layers"></div>
+    <div class="layer-actions"><button id="subir" title="Subir">↑ Subir</button><button id="descer" title="Descer">↓ Descer</button><button id="duplicar">Duplicar</button><button id="apagar" class="danger">Apagar</button></div>
+  </div>
+  <div id="props"></div>
+  <div class="insp-sec">
+    <h3>Planos da foto</h3>
+    <button id="detectar" class="btn-wide">Detectar pessoa e objetos</button>
+    <div class="objs" id="objs"></div>
+  </div>
+</aside>
+</div>
+
+<script type="module" src="celular/autonomo.js"></script>
+<script type="module" src="posts.js"></script>
+<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');</script><dialog id="projetosDlg" class="projetos-dlg"><div class="pj-head"><b>Projetos</b><span class="pj-sub">Salvos no Mac, com salvamento automático enquanto você edita.</span><span style="flex:1"></span>
+<button id="pjNovo">Novo projeto</button><label class="post-open-label">Abrir arquivo<input type="file" id="abrirProjeto" accept=".json,application/json" hidden></label><button id="pjBaixar">Baixar cópia do atual</button><button id="pjFechar" aria-label="Fechar">✕</button></div>
+<div id="pjLista" class="pj-lista"></div></dialog>
+</body></html>
