@@ -19,12 +19,17 @@ if (filtroEmulado) {
   P.save = function () { let s = pilha.get(this); if (!s) pilha.set(this, s = []); s.push(atual.get(this) || 'none'); return original.save.call(this); };
   P.restore = function () { const s = pilha.get(this); if (s?.length) atual.set(this, s.pop()); return original.restore.call(this); };
   const ler = f => { const ops = []; String(f).replace(/([a-z-]+)\(([^)]*)\)/gi, (m, n, a) => { ops.push([n.toLowerCase(), parseFloat(a)]); return m; }); return ops; };
-  const tela = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, w); c.height = Math.max(1, h); return [c, c.getContext('2d')]; };
+  // telas de trabalho reaproveitadas por posição (criar telas cheias a cada desenho pesava no iPhone)
+  const POOL = {};
+  const tela = (w, h, slot = 'a') => { w = Math.max(1, w); h = Math.max(1, h); let c = POOL[slot];
+    if (!c || c.width !== w || c.height !== h) { c = POOL[slot] = document.createElement('canvas'); c.width = w; c.height = h; }
+    const g = c.getContext('2d'); original.save.call(g); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h); original.restore.call(g);
+    g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; return [c, g]; };
   function desfocar(c, r) {
     if (!(r > .4)) return;
     const w = c.width, h = c.height, f = Math.max(1, r / 2), sw = Math.max(1, Math.round(w / f)), sh = Math.max(1, Math.round(h / f));
-    const [a, ga] = tela(sw, sh); ga.imageSmoothingEnabled = true; ga.imageSmoothingQuality = 'high'; original.drawImage.call(ga, c, 0, 0, sw, sh);
-    const [b, gb] = tela(sw, sh), passos = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]];
+    const [a, ga] = tela(sw, sh, 'b'); ga.imageSmoothingEnabled = true; ga.imageSmoothingQuality = 'high'; original.drawImage.call(ga, c, 0, 0, sw, sh);
+    const [b, gb] = tela(sw, sh, 'c'), passos = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]];
     passos.forEach(([dx, dy], i) => { gb.globalAlpha = 1 / (i + 1); original.drawImage.call(gb, a, dx, dy); });   // média corrida = caixa 3x3
     const g = c.getContext('2d'); g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'copy';
     g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; original.drawImage.call(g, b, 0, 0, w, h); g.restore();

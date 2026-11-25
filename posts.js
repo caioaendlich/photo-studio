@@ -649,6 +649,7 @@ let baseAtual = '';
 const CACHE_CAMADA = new Map(), IDS = new WeakMap(); let proxId = 1;
 const idDe = o => { if (!o || typeof o !== 'object') return 0; if (!IDS.has(o)) IDS.set(o, proxId++); return IDS.get(o); };
 const assinatura = A => JSON.stringify(A, (k, v) => (k[0] === '_' || k === 'keyframes' || k === 'imgSrc') ? undefined : (k === 'img' ? idDe(v) : v));
+const RASCUNHO = {}, FUNDO_SEL = { key: '', c: null };
 function render(c, { selecao = false, tempo = (st.motion.preview ? st.motion.time : null) } = {}) {
   // Não recriar a superfície a cada frame: o MediaRecorder mantém esta mesma trilha Canvas.
   if (c.canvas.width !== W()) c.canvas.width = W();
@@ -662,8 +663,21 @@ function render(c, { selecao = false, tempo = (st.motion.preview ? st.motion.tim
   desenharFotoTratada(c, { foto: st.img, enquadrar: (g, src) => cobrir(g, src), mascara: mascPessoa, imagemFundo: st.imgFundo, w: W(), h: H(), f: st.fundo,
     chave: [chaveEnq(), idDe(st.img), idDe(st.pessoa), idDe(st.imgFundo)].join() });
   const quadro = [chaveEnq(), JSON.stringify(st.fundo), idDe(st.imgFundo), idDe(st.img), idDe(st.pessoa), idDe(st.rosto), st.objetos.map(o => idDe(o.img)).join('.'), versaoFontes].join();
-  let pilha = '';
-  for (const L of st.camadas) {
+  let pilha = '', inicio = 0;
+  // Caio 24/11 22:21 (tudo pesado): ao mexer numa camada, as de baixo não mudam. A arte até logo abaixo da camada
+  // selecionada fica guardada e é reaproveitada enquanto nada abaixo dela mudar.
+  const corte = tempo === null && st.sel > 0 && st.sel < st.camadas.length ? st.sel : -1;
+  if (corte > 0 && FUNDO_SEL.key) {
+    let p = '';
+    for (let i = 0; i < corte; i++) { const L = st.camadas[i]; if (L.oculto || L._editando) continue; p += assinatura(L); }
+    if (FUNDO_SEL.key === quadro + '|' + p + '|' + corte) { c.drawImage(FUNDO_SEL.c, 0, 0); pilha = p; inicio = corte; }
+  }
+  for (let i = inicio; i < st.camadas.length; i++) {
+    const L = st.camadas[i];
+    if (i === corte && inicio !== corte) {   // guarda a arte de baixo para os próximos quadros
+      if (!FUNDO_SEL.c || FUNDO_SEL.c.width !== W() || FUNDO_SEL.c.height !== H()) { FUNDO_SEL.c = document.createElement('canvas'); FUNDO_SEL.c.width = W(); FUNDO_SEL.c.height = H(); }
+      const g = FUNDO_SEL.c.getContext('2d'); g.clearRect(0, 0, W(), H()); g.drawImage(c.canvas, 0, 0); FUNDO_SEL.key = quadro + '|' + pilha + '|' + corte;
+    }
     if (L.oculto || L._editando) continue;   // o texto em edição aparece só na caixa (sem duplicar atrás)
     let A = tempo === null ? L : interpolate(L, tempo);
     if (A.forma === 'anelTexto' && tempo !== null && A.giro) A = { ...A, fase: (A.fase || 0) + A.giro * tempo };
@@ -673,12 +687,17 @@ function render(c, { selecao = false, tempo = (st.motion.preview ? st.motion.tim
     const sig = assinatura(A); baseAtual = quadro + '|' + pilha; pilha += sig;
     const chave = PESADOS.has(A.forma) ? pilha + '|' + quadro : null, guardado = chave && CACHE_CAMADA.get(chave);
     if (guardado) { L._box = guardado.box; if (A !== L) A._box = guardado.box; c.drawImage(guardado.t, 0, 0); continue; }
-    const t = document.createElement('canvas'); t.width = W(); t.height = H(); const tc = t.getContext('2d');
+    // camada que não fica em cache usa sempre a mesma tela de rascunho (criar uma tela cheia por camada a cada quadro pesava no iPhone)
+    let t; if (chave) { t = document.createElement('canvas'); t.width = W(); t.height = H(); }
+    else { if (!RASCUNHO.c || RASCUNHO.c.width !== W() || RASCUNHO.c.height !== H()) { RASCUNHO.c = document.createElement('canvas'); RASCUNHO.c.width = W(); RASCUNHO.c.height = H(); } t = RASCUNHO.c; }
+    const tc = t.getContext('2d'); tc.setTransform(1, 0, 0, 1, 0, 0); tc.clearRect(0, 0, W(), H()); tc.save();
     if (A.tipo === 'molde') desenharMolde(tc, A); else if (A.tipo === 'texto') desenharTexto(tc, A); else desenharForma(tc, A, c.canvas);
+    tc.restore(); tc.save();
     if (A !== L) { L._box = A._box; L._mascara = A._mascara; L._partes = A._partes; }
     // planos: apaga a camada onde os objetos marcados ficam na frente
     const frente = [...(A.atras || []).map(i => st.objetos[i]?.img).filter(Boolean), ...(A.tipo === 'molde' && A._mascara ? [A._mascara] : [])];
     tc.globalCompositeOperation = 'destination-out'; for (const m of frente) tc.drawImage(mascara(m).canvas, 0, 0);
+    tc.restore();
     if (chave) { CACHE_CAMADA.set(chave, { t, box: A._box }); if (CACHE_CAMADA.size > 12) CACHE_CAMADA.delete(CACHE_CAMADA.keys().next().value); }
     c.drawImage(t, 0, 0);
   }
@@ -775,7 +794,7 @@ function interfaceAtual() {
   const L = st.camadas[st.sel];
   $('selName').textContent = L ? L.nome : st.img ? 'Clique numa camada para editar' : '';
   for (const id of ['tbFrente', 'tbTras', 'tbDuplicar', 'tbApagar']) $(id).disabled = !L;
-  $('desfazer').disabled = hist.pos <= 0; $('refazer').disabled = hist.pos >= hist.pilha.length - 1;
+  $('desfazer').disabled = $('atDesfazer').disabled = hist.pos <= 0; $('refazer').disabled = $('atRefazer').disabled = hist.pos >= hist.pilha.length - 1; $('atApagar').disabled = !L;
   $('empty').classList.toggle('hide', !!st.img);
   pontosLinhaTempo();
 }
@@ -1334,7 +1353,7 @@ function escalar(L, v, fx, fy, esticar = false) {
 let gestoAlt = false;
 cv.onpointerup = e => { gestoAlt = !!e?.altKey; if (!gesto) return; const mudou = gesto.movido, foto = gesto.tipo === 'foto'; gesto = null; st.rapido = false; st.guias = null; if (foto) { cv.style.cursor = 'grab'; if (mudou && !gestoAlt) encaixarFoto(); desenhar(); if (mudou) { clearTimeout(st.tm); st.tm = setTimeout(miniaturas, 300); } return; } if (mudou) registrar(); desenhar(); };
 // clicar fora da arte (parte escura) desseleciona
-$('pstage').addEventListener('pointerdown', e => { if (e.target === cv || e.target.closest('.drop') || e.target.closest('#inlineEdit') || e.target.closest('.pstatus')) return; if (st.sel !== -1) { st.sel = -1; desenhar(); } });
+$('pstage').addEventListener('pointerdown', e => { if (e.target === cv || e.target.closest('.drop') || e.target.closest('#inlineEdit') || e.target.closest('.pstatus') || e.target.closest('.acoes-tela')) return; if (st.sel !== -1) { st.sel = -1; desenhar(); } });
 $('pstage').addEventListener('dblclick', e => { if (e.target !== cv) return; });
 
 // ---------- edição do texto direto na arte ----------
@@ -1836,7 +1855,6 @@ function menuDoToque(e, p) {
   if (L) { st.sel = i; desenhar(); }
   const pi = typeof pessoaIdx === 'function' ? pessoaIdx() : -1, atrasPessoa = L && Array.isArray(L.atras) && pi >= 0 && L.atras.includes(pi);
   const itens = [];
-  if (L) itens.push(['🗑', 'Apagar', apagar, 'perigo']);   // Caio 24/11 21:28: apagar é o primeiro
   if (L && (L.tipo === 'texto' || L.tipo === 'molde' || L.forma === 'caixa' || L.forma === 'receita')) itens.push(['✎', 'Editar texto', () => abrirEdicao(L)]);
   if (L) itens.push(['⧉', 'Duplicar', duplicar], ['↑', 'Trazer para frente', () => reordenar(1)], ['↓', 'Enviar para trás', () => reordenar(-1)]);
   if (L && Array.isArray(L.atras) && pi >= 0) itens.push(['◐', atrasPessoa ? 'Passar na frente da pessoa' : 'Passar atrás da pessoa', () => { L.atras = atrasPessoa ? L.atras.filter(x => x !== pi) : [...L.atras, pi]; registrar(); redesenhar(); }]);
@@ -1940,6 +1958,8 @@ const duplicar = () => { const L = st.camadas[st.sel]; if (!L) return; const [c]
 const apagar = () => { if (st.sel < 0) return; st.camadas.splice(st.sel, 1); st.sel = Math.min(st.sel, st.camadas.length - 1); registrar(); desenhar(); };
 $('subir').onclick = $('tbFrente').onclick = () => reordenar(1); $('descer').onclick = $('tbTras').onclick = () => reordenar(-1);
 $('duplicar').onclick = $('tbDuplicar').onclick = duplicar; $('apagar').onclick = $('tbApagar').onclick = apagar;
+// Caio 24/11 22:21: no celular, desfazer e refazer no canto inferior esquerdo da prévia e apagar no direito
+$('atApagar').onclick = apagar; $('atDesfazer').onclick = () => voltar(-1); $('atRefazer').onclick = () => voltar(1);
 let nudgeT = 0;
 document.addEventListener('keydown', e => {
   const digitando = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) || document.activeElement.isContentEditable, cmd = e.metaKey || e.ctrlKey;

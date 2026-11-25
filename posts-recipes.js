@@ -52,6 +52,8 @@ export function novaReceita(id, { W, H, bx, palavra = 'NATURAL', frase = '', obj
 // ---------- utilidades ----------
 function sombra(c, S, blur = 3, a = .47, d = 1) { c.shadowColor = `rgba(0,0,0,${a})`; c.shadowBlur = blur * S * 2; c.shadowOffsetX = d * S; c.shadowOffsetY = d * S; }
 function tela(W, H) { const t = document.createElement('canvas'); t.width = W; t.height = H; return [t, t.getContext('2d')]; }
+const POOL = [];
+function rascunho(i, W, H) { let c = POOL[i]; if (!c || c.width !== W || c.height !== H) { c = POOL[i] = document.createElement('canvas'); c.width = W; c.height = H; } const g = c.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.shadowColor = 'transparent'; g.shadowBlur = 0; g.filter = 'none'; g.clearRect(0, 0, W, H); return [c, g]; }
 function semPessoa(tc, env) { if (!env.pessoa) return; tc.save(); tc.globalCompositeOperation = 'destination-out'; tc.drawImage(env.pessoa.canvas, 0, 0); tc.restore(); }
 function progresso(F, env) {
   if (F._t == null) return { q: F.qParado ?? .7, s: null, dur: 3 };
@@ -71,7 +73,7 @@ function ancora(m, W, H, where) {
 // ---------- desenho ----------
 export function desenharReceita(c, F, env) {
   const { W, H } = env, S = W / 1080, { q, s, dur } = progresso(F, env), cor = F.cor || '#ffffff';
-  const [tt, tc] = tela(W, H), [ft, fc] = tela(W, H);   // trás e frente
+  const [tt, tc] = rascunho(0, W, H), [ft, fc] = rascunho(1, W, H);   // trás e frente (telas reaproveitadas)
   const txt = String(F.texto || '').trim(), TXT = txt.toUpperCase();
   F._box = { x: F.x, y: F.y, w: F.w, h: F.h, rot: 0 };
   const fn = DESENHOS[F.receita]; if (fn) fn({ c, tc, fc, F, env, W, H, S, q, s, dur, cor, txt, TXT });
