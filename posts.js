@@ -874,10 +874,40 @@ function miniaturas() {
   }
   st.camadas = salvo;
 }
+// Regra de Caio (24/11 21:15), para todos os estilos: com um texto selecionado (texto, molde, estilo de palavra ou peça
+// de um estilo), o estilo tocado transforma esse texto, mantendo as palavras; tocar outro estilo transforma de novo.
+// Sem nada selecionado, cria um texto novo. Peças criadas juntas por um estilo formam um grupo e são trocadas juntas.
+const TEXTUAL = L => !!L && (L.tipo === 'texto' || L.tipo === 'molde' || L.forma === 'receita' || !!L.doEstilo || !!L.grupo);
+const limparTexto = t => String(t || '').replace(/\*/g, '').replace(/\s*\n\s*/g, ' ').trim();
+function palavrasDe(S) {
+  if (!S) return null;
+  const textos = S.grupo ? st.camadas.filter(l => l.grupo === S.grupo && l.tipo === 'texto') : [];
+  if (textos.length > 1) {   // estilo com palavra grande + frase: a maior letra é a palavra, o resto é a frase
+    const maior = textos.reduce((a, b) => ((b.tam || 0) * (b.sy || 1) > (a.tam || 0) * (a.sy || 1) ? b : a));
+    return { palavra: limparTexto(maior.texto), frase: textos.filter(l => l !== maior).map(l => String(l.texto || '').replace(/\n/g, '|')).join('|') };
+  }
+  if (S.tipo === 'texto') return { palavra: limparTexto(S.texto) };
+  if (S.forma === 'receita') return { palavra: limparTexto(S.texto), frase: S.sub || '' };
+  if (S.tipo === 'molde') return { palavra: limparTexto($('palavra').value), frase: $('frase').value };
+  const irmao = st.camadas.find(l => l.grupo && l.grupo === S.grupo && (l.tipo === 'texto' || l.forma === 'receita'));
+  return irmao ? palavrasDe(irmao) : null;
+}
+function trocarSelecao(novas) {
+  const S = st.camadas[st.sel], g = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  novas.forEach(l => { l.grupo = g; });
+  if (TEXTUAL(S)) {
+    const tirar = new Set(S.grupo ? st.camadas.filter(l => l.grupo === S.grupo) : [S]);
+    const idx = Math.max(0, st.camadas.findIndex(l => tirar.has(l)));
+    st.camadas = st.camadas.filter(l => !tirar.has(l)); st.camadas.splice(idx, 0, ...novas); st.sel = idx + novas.length - 1;
+  } else { st.camadas.push(...novas); st.sel = st.camadas.length - 1; }
+}
 async function aplicarEstilo(E) {
   st.estilo = E.id;
   if (E.planos && !st.objetos.length && st.img) await detectar();
-  st.camadas = [...E.criar(), ...st.camadas.filter(l => l.tipo === 'forma' && !l.doEstilo)]; st.sel = 0; miniaturas(); desenhar(); registrar();
+  const S = st.camadas[st.sel], w = TEXTUAL(S) ? palavrasDe(S) : null;
+  if (w?.palavra) $('palavra').value = w.palavra;
+  if (w?.frase) $('frase').value = w.frase;
+  trocarSelecao(E.criar()); miniaturas(); desenhar(); registrar();
 }
 
 // ---------- inspetor ----------
@@ -1703,13 +1733,11 @@ $('receitas').onclick = async e => {
   const mp = st.pessoa || st.objetos[pessoaIdx()]?.img, bx = mp ? caixaPessoa(mascara(mp)) : { x: W() / 2, y: H() / 2, w: W() * .6, h: H() * .7 };
   // Caio 24/11 20:44: com um texto (ou outro estilo) selecionado, o estilo é aplicado nele, mantendo as palavras;
   // sem nada selecionado, cria um texto novo com a palavra padrão TEXTO.
-  const S = st.camadas[st.sel], alvoTexto = S && (S.tipo === 'texto' || S.forma === 'receita');
-  const pal = alvoTexto ? String(S.texto || '').replace(/\*/g, '').replace(/\s*\n\s*/g, ' ').trim() || 'TEXTO' : 'TEXTO';
+  const S = st.camadas[st.sel], w = TEXTUAL(S) ? palavrasDe(S) : null;
   const obj = R.objeto ? (S?.forma === 'receita' && S.obj >= 0 ? S.obj : Math.max(-1, st.objetos.findIndex(o => o.kind !== 'person'))) : -1;
-  const L = novaReceita(id, { W: W(), H: H(), bx, palavra: pal, frase: S?.forma === 'receita' ? S.sub || '' : '', obj });
+  const L = novaReceita(id, { W: W(), H: H(), bx, palavra: w?.palavra || 'TEXTO', frase: S?.forma === 'receita' ? S.sub || '' : '', obj });
   if (S?.forma === 'receita') { L.cor = S.cor || L.cor; L.vel = S.vel ?? L.vel; L.inicio = S.inicio || 0; L.dur = S.dur || 0; }
-  if (alvoTexto) st.camadas[st.sel] = L; else { st.camadas.push(L); st.sel = st.camadas.length - 1; }
-  registrar(); desenhar();
+  trocarSelecao([L]); registrar(); desenhar();
 };
 $('editoriais').onclick = async e => {
   const button = e.target.closest('button[data-k]'); if (!button) return;
@@ -1853,7 +1881,7 @@ function pos(i) { const L = st.camadas.filter(l => l.tipo !== 'forma')[i]; retur
 for (const id of ['fx', 'fy']) { $(id).oninput = () => { desenhar(); clearTimeout(st.tm); st.tm = setTimeout(miniaturas, 400); }; }
 
 const reordenar = d => { const i = st.sel, j = i + d; if (i < 0 || j < 0 || j >= st.camadas.length) return; [st.camadas[i], st.camadas[j]] = [st.camadas[j], st.camadas[i]]; st.sel = j; registrar(); desenhar(); };
-const duplicar = () => { const L = st.camadas[st.sel]; if (!L) return; const [c] = copiar([L]); Object.assign(c, { nome: L.nome + ' (cópia)' }); if (L.tipo === 'molde') c.dy = (L.dy || 0) + 40; else { c.x = L.x + 30; c.y = L.y + 30; } st.camadas.splice(st.sel + 1, 0, c); st.sel++; registrar(); desenhar(); };
+const duplicar = () => { const L = st.camadas[st.sel]; if (!L) return; const [c] = copiar([L]); Object.assign(c, { nome: L.nome + ' (cópia)' }); delete c.grupo; if (L.tipo === 'molde') c.dy = (L.dy || 0) + 40; else { c.x = L.x + 30; c.y = L.y + 30; } st.camadas.splice(st.sel + 1, 0, c); st.sel++; registrar(); desenhar(); };
 const apagar = () => { if (st.sel < 0) return; st.camadas.splice(st.sel, 1); st.sel = Math.min(st.sel, st.camadas.length - 1); registrar(); desenhar(); };
 $('subir').onclick = $('tbFrente').onclick = () => reordenar(1); $('descer').onclick = $('tbTras').onclick = () => reordenar(-1);
 $('duplicar').onclick = $('tbDuplicar').onclick = duplicar; $('apagar').onclick = $('tbApagar').onclick = apagar;
