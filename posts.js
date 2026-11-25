@@ -875,7 +875,7 @@ function miniaturas() {
   for (const E of ESTILOS) {
     const b = document.createElement('button'); b.className = 'thumb' + (st.estilo === E.id ? ' on' : '');
     const t = document.createElement('canvas'); t.width = 216; t.height = Math.round(216 * H() / W());
-    st.camadas = [...E.criar(), ...salvo.filter(l => l.tipo === 'forma' && !l.doEstilo)];
+    st.camadas = [...E.criar(), ...salvo.filter(l => l.tipo === 'forma' && !l.doEstilo && !PESADOS.has(l.forma) && l.forma !== 'receita' && !isEditorialEffect(l.forma))];   // miniatura sem efeitos pesados
     const full = document.createElement('canvas').getContext('2d'); render(full); t.getContext('2d').drawImage(full.canvas, 0, 0, t.width, t.height);
     b.append(t); const s = document.createElement('span'); s.textContent = E.nome + (E.planos ? ' · planos' : ''); b.append(s);
     b.onclick = () => aplicarEstilo(E); box.append(b);
@@ -1384,7 +1384,10 @@ async function reduzida(img, lado) {
 }
 const imagem = async src => { const m = new Image(); m.src = src; await m.decode(); return m; };
 const arquivoDados = file => new Promise((resolve, reject) => { const rd = new FileReader(); rd.onload = () => resolve(rd.result); rd.onerror = () => reject(rd.error); rd.readAsDataURL(file); });
-function pngDados(img) { const c = document.createElement('canvas'); c.width = img.naturalWidth || img.width; c.height = img.naturalHeight || img.height; c.getContext('2d').drawImage(img, 0, 0); return c.toDataURL('image/png'); }
+// Caio 24/11 22:08 (projeto demorava a abrir): imagem que já veio de um texto data: é devolvida como está, e a
+// conversão para PNG fica guardada na própria imagem, em vez de recodificar foto e máscaras a cada salvamento.
+function pngDados(img) { if (!(img instanceof HTMLImageElement)) return pngDadosNovo(img); if (img._dados) return img._dados; if (img.src.startsWith('data:')) return (img._dados = img.src); return (img._dados = pngDadosNovo(img)); }
+function pngDadosNovo(img) { const c = document.createElement('canvas'); c.width = img.naturalWidth || img.width; c.height = img.naturalHeight || img.height; c.getContext('2d').drawImage(img, 0, 0); return c.toDataURL('image/png'); }
 // No celular, o arquivo vai pela folha de compartilhar do iPhone (Salvar imagem / Salvar vídeo vão direto para o Fotos).
 // O Safari só abre essa folha a partir de um toque; se a exportação demorou, aparece o botão "Salvar no celular".
 function baixar(blob, nome) {
@@ -1427,7 +1430,7 @@ async function carregarProjeto(data) {
   if (String(data.assinatura ?? 'CAIO ENDLICH').trim()) { const A = textoAssinatura('nome'); A.texto = String(data.assinatura ?? 'CAIO ENDLICH').trim().toUpperCase(); st.camadas.push(A); }
   $('fx').value = data.fx ?? .5; $('fy').value = data.fy ?? .5; $('fz').value = data.fz ?? 1; $('ox').value = data.ox ?? 0; $('oy').value = data.oy ?? 0;
   $('formato').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === st.formato));
-  hist.pilha = []; hist.pos = -1; miniaturas(); desenhar(); registrar();
+  hist.pilha = []; hist.pos = -1; desenhar(); registrar(); setTimeout(miniaturas, 60);   // a arte aparece antes das miniaturas
 }
 $('abrirProjeto').onchange = async event => {
   const file = event.target.files?.[0]; if (!file) return;
