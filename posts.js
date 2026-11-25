@@ -1300,13 +1300,19 @@ $('pstage').addEventListener('pointerdown', e => { if (e.target === cv || e.targ
 $('pstage').addEventListener('dblclick', e => { if (e.target !== cv) return; });
 
 // ---------- edição do texto direto na arte ----------
+// Caio 24/11 21:13: no celular o toque duplo abre só o menu; o editor abre pelo "Editar texto" do menu.
+let toqueRecente = 0;
+cv.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') toqueRecente = Date.now(); }, true);
 cv.ondblclick = e => {
+  if (Date.now() - toqueRecente < 700) return;
   const i = camadaEm(local(e)); if (i === undefined) return;
-  const L = st.camadas[i]; st.sel = i;
+  st.sel = i; abrirEdicao(st.camadas[i]);
+};
+function abrirEdicao(L) {
   if (L.tipo === 'molde') { abrirAba('texto'); $('palavra').focus(); $('palavra').select(); desenhar(); return; }
   if (L.tipo === 'texto' || L.forma === 'receita') editarNaArte(L);
   else if (L.forma === 'caixa') { desenhar(); $('props').querySelector('input[type=text]')?.focus(); }
-};
+}
 // Caio 24/11 21:07: na edição a camada some da arte (sem texto duplicado atrás), as bolinhas somem, e a caixa usa a
 // fonte, o peso e o alinhamento do próprio texto, com o tamanho ajustado à largura da caixa.
 function editarNaArte(L) {
@@ -1778,7 +1784,7 @@ function menuDoToque(e, p) {
   if (L) { st.sel = i; desenhar(); }
   const pi = typeof pessoaIdx === 'function' ? pessoaIdx() : -1, atrasPessoa = L && Array.isArray(L.atras) && pi >= 0 && L.atras.includes(pi);
   const itens = [];
-  if (L && (L.tipo === 'texto' || L.tipo === 'molde' || L.forma === 'caixa' || L.forma === 'receita')) itens.push(['✎', 'Editar texto', () => cv.ondblclick?.(e)]);
+  if (L && (L.tipo === 'texto' || L.tipo === 'molde' || L.forma === 'caixa' || L.forma === 'receita')) itens.push(['✎', 'Editar texto', () => abrirEdicao(L)]);
   if (L) itens.push(['⧉', 'Duplicar', duplicar], ['↑', 'Trazer para frente', () => reordenar(1)], ['↓', 'Enviar para trás', () => reordenar(-1)]);
   if (L && Array.isArray(L.atras) && pi >= 0) itens.push(['◐', atrasPessoa ? 'Passar na frente da pessoa' : 'Passar atrás da pessoa', () => { L.atras = atrasPessoa ? L.atras.filter(x => x !== pi) : [...L.atras, pi]; registrar(); redesenhar(); }]);
   if (L) itens.push(['◌', L.oculto ? 'Mostrar' : 'Esconder', () => { L.oculto = !L.oculto; registrar(); desenhar(); }]);
