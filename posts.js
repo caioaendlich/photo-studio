@@ -1869,6 +1869,35 @@ cv.onpointerup = cv.onpointercancel = e => {
   if (pinca) { if (toques.size < 2) { const foto = !pinca.L; pinca = null; if (foto) encaixarFoto(); registrar(); desenhar(); clearTimeout(st.tm); st.tm = setTimeout(miniaturas, 300); } return; }
   cimaOriginal(e);
 };
+// Segurar o dedo (ou o clique) parado na arte mostra a foto original, sem nenhuma edição; soltar volta (Caio 24/11 21:23).
+let segurar = null, mostrandoOriginal = false;
+const baixoComPinca = cv.onpointerdown, moverComPinca = cv.onpointermove, cimaComPinca = cv.onpointerup;
+function mostrarOriginal() {
+  if (!st.img) return; mostrandoOriginal = true;
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W(), H()); cobrir(ctx, st.img);
+  const k = px(), t = 'ORIGINAL'; ctx.save(); ctx.font = `600 ${13 * k}px Neue, GenSans, system-ui, sans-serif`;
+  const w = ctx.measureText(t).width + 24 * k, h = 28 * k, x = 14 * k, y = 14 * k;
+  ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.beginPath(); ctx.roundRect(x, y, w, h, h / 2); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(t, x + 12 * k, y + h / 2 + k); ctx.restore();
+}
+const pararSegurar = () => { if (segurar) { clearTimeout(segurar.t); segurar = null; } };
+cv.onpointerdown = e => {
+  pararSegurar();
+  if (st.img && e.isPrimary && e.button === 0) segurar = { id: e.pointerId, x: e.clientX, y: e.clientY,
+    t: setTimeout(() => { segurar = null; if (toques.size > 1 || pinca || document.getElementById('menuToque') || st.editando) return; mostrarOriginal(); }, 450) };
+  baixoComPinca(e);
+};
+cv.onpointermove = e => {
+  if (mostrandoOriginal) return;   // enquanto mostra o original, nada se move
+  if (segurar && e.pointerId === segurar.id && Math.hypot(e.clientX - segurar.x, e.clientY - segurar.y) > 8) pararSegurar();
+  if (segurar && e.pointerId !== segurar.id) pararSegurar();
+  moverComPinca(e);
+};
+cv.onpointerup = cv.onpointercancel = e => {
+  pararSegurar();
+  if (mostrandoOriginal) { mostrandoOriginal = false; cimaComPinca(e); desenhar(); return; }
+  cimaComPinca(e);
+};
 $('rail').onclick = e => { const b = e.target.closest('button[data-tab]'); if (!b) return;
   if (b.dataset.tab === 'ajustes') { document.body.classList.add('ver-ajustes'); document.querySelectorAll('#rail button').forEach(x => x.classList.toggle('on', x === b)); return; }
   document.body.classList.remove('ver-ajustes'); abrirAba(b.dataset.tab); };
