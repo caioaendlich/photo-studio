@@ -5,6 +5,7 @@
 // margem; clique fora desseleciona; objetos detectados viram camadas soltas; formas refeitas (preenchimento, contorno, traço,
 // cantos, sombra, pontas); molde com fonte, peso, linha e frase opcionais e "Separar em camadas"; desfazer/refazer, zoom,
 // edição de texto direto na arte, ocultar camada, atalhos e linha do tempo com os pontos gravados.
+import './posts-canvas-filter.js';   // precisa vir primeiro: emula ctx.filter no iPhone
 import { EDITORIAL_EFFECTS, isEditorialEffect, makeEditorialEffect, drawEditorialEffect, alvoAmpliacao } from './posts-editorial-effects.js';
 import { interpolate, snapshot, saveKeyframe, removeKeyframe, exportCanvasVideo, animationMime } from './posts-motion.js';
 import { makeAnalysis, drawAnalysis, installFocusDrawing } from './posts-analysis.js';
@@ -104,7 +105,7 @@ function caber(L, max) {   // reduz o tamanho até o bloco caber na largura
 }
 const LIV = () => W() - 2 * MARGEM;
 function frase() { return $('frase').value.trim(); }
-function palavra() { return ($('palavra').value || ' ').toUpperCase(); }
+function palavra() { return ($('palavra').value.trim() || 'TEXTO').toUpperCase(); }
 const pessoaIdx = () => st.objetos.findIndex(o => o.kind === 'person');
 function garantirPessoa() { if (st.pessoa && !st.objetos.some(o => o.kind === 'person')) st.objetos.unshift({ name: 'Pessoa', kind: 'person', img: st.pessoa }); return pessoaIdx(); }
 const MOLDE = () => ({ tipo: 'molde', nome: 'Molde Corte', tinta: 'escura', cobertura: 0.5, dy: 0, mx: 0, escala: 1, recorte: true, atras: [],
@@ -1812,12 +1813,12 @@ function menuDoToque(e, p) {
   if (L) { st.sel = i; desenhar(); }
   const pi = typeof pessoaIdx === 'function' ? pessoaIdx() : -1, atrasPessoa = L && Array.isArray(L.atras) && pi >= 0 && L.atras.includes(pi);
   const itens = [];
+  if (L) itens.push(['🗑', 'Apagar', apagar, 'perigo']);   // Caio 24/11 21:28: apagar é o primeiro
   if (L && (L.tipo === 'texto' || L.tipo === 'molde' || L.forma === 'caixa' || L.forma === 'receita')) itens.push(['✎', 'Editar texto', () => abrirEdicao(L)]);
   if (L) itens.push(['⧉', 'Duplicar', duplicar], ['↑', 'Trazer para frente', () => reordenar(1)], ['↓', 'Enviar para trás', () => reordenar(-1)]);
   if (L && Array.isArray(L.atras) && pi >= 0) itens.push(['◐', atrasPessoa ? 'Passar na frente da pessoa' : 'Passar atrás da pessoa', () => { L.atras = atrasPessoa ? L.atras.filter(x => x !== pi) : [...L.atras, pi]; registrar(); redesenhar(); }]);
   if (L) itens.push(['◌', L.oculto ? 'Mostrar' : 'Esconder', () => { L.oculto = !L.oculto; registrar(); desenhar(); }]);
   itens.push(['↶', 'Desfazer', () => voltar(-1)], ['↷', 'Refazer', () => voltar(1)]);
-  if (L) itens.push(['🗑', 'Apagar', apagar, 'perigo']);
   const m = document.createElement('div'); m.id = 'menuToque';
   m.innerHTML = (L ? `<p>${String(L.nome || L.texto || 'Objeto').replace(/[&<>"']/g, '').slice(0, 28)}</p>` : '<p>Foto</p>') + itens.map((it, k) => `<button data-k="${k}" class="${it[3] || ''}"><span>${it[0]}</span>${it[1]}</button>`).join('');
   document.body.appendChild(m);
