@@ -1414,9 +1414,21 @@ $('salvarArquivo').onclick = async () => {
   try { const data = await arquivoProjeto(); baixar(new Blob([JSON.stringify(data)], { type: 'application/json' }), 'post_' + String(data.palavra).replace(/[^\wÀ-ú]+/g, '').slice(0, 40) + '_editavel.json'); status('Projeto editável salvo.'); }
   catch (err) { status(err.message || 'Não consegui salvar o projeto.', true); }
 };
+// Caio 24/11 22:14 (abrir continuava lento): a foto era guardada na resolução original do iPhone (12 MP, vários MB em
+// texto), e cada abertura relia, decodificava e copiava tudo isso. A arte tem no máximo 1080 de largura; guardar a foto
+// com até 2560 px no lado maior (JPEG 92%) mantém folga para zoom 2x e deixa abrir, salvar e redesenhar bem mais leves.
+const LADO_MAX = 2560;
+async function reduzirFoto(img, src) {
+  const w = img.naturalWidth, h = img.naturalHeight, k = LADO_MAX / Math.max(w, h);
+  if (!(k < 1)) return { img, src, reduzida: false };
+  const c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+  const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(img, 0, 0, c.width, c.height);
+  const novo = c.toDataURL('image/jpeg', .92); return { img: await imagem(novo), src: novo, reduzida: true };
+}
 async function carregarProjeto(data) {
   if (data.schema !== 'caio-videostudio-post' || data.version !== 1 || !data.imagem || !Array.isArray(data.camadas)) throw Error('Esse não é um projeto do editor de Posts.');
-  const img = await imagem(data.imagem), pessoa = data.pessoa ? await imagem(data.pessoa) : null;
+  const foto = await reduzirFoto(await imagem(data.imagem), data.imagem); data.imagem = foto.src; st._fotoReduzida = foto.reduzida;
+  const img = foto.img, pessoa = data.pessoa ? await imagem(data.pessoa) : null;
   const objetos = await Promise.all((data.objetos || []).map(async o => ({ name: o.name, kind: o.kind, img: await imagem(o.mask) })));
   const camadas = await Promise.all(data.camadas.map(async o => { const l = { ...o }; if (l.imgSrc) l.img = await imagem(l.imgSrc); return l; }));
   stopMotion();
@@ -1488,11 +1500,12 @@ const quando = t => { if (!t) return ''; const d = new Date(t * 1000), hoje = ne
 async function listarProjetos() { const r = await fetch('/api/posts/projetos'); const j = await r.json(); if (!Array.isArray(j)) throw new Error(j.error || 'lista indisponível'); return j; }
 async function abrirDaBiblioteca(id) {
   if (st.img && st.projeto?.id !== id && assinaturaProjeto() !== ultimaAssinatura) await salvarNaBiblioteca();   // guarda o atual antes de trocar
-  status('Abrindo o projeto…');
+  status('Abrindo o projeto…'); const t0 = performance.now();
   try {
     const r = await fetch('/api/posts/projetos/' + id), j = await r.json(); if (!r.ok || j.error) throw new Error(j.error || r.status);
     await carregarProjeto(j.projeto); st.projeto = { id: j.id, nome: j.nome }; ultimaAssinatura = assinaturaProjeto();
-    marcarSalvo('Salvo'); fecharProjetos(); status(`"${j.nome}" aberto. As mudanças continuam sendo salvas sozinhas.`);
+    if (st._fotoReduzida) { ultimaAssinatura = null; agendarSalvar(2500); }   // regrava uma vez com a foto reduzida
+    marcarSalvo('Salvo'); fecharProjetos(); status(`"${j.nome}" aberto em ${((performance.now() - t0) / 1000).toFixed(1).replace('.', ',')} s.`);
   } catch (e) { status('Não consegui abrir o projeto: ' + e.message, true); }
 }
 function fecharProjetos() { if ($('projetosDlg').open) $('projetosDlg').close(); }
@@ -1693,7 +1706,7 @@ async function abrirImagem(f) {
   if (!(f.type?.startsWith('image/') || /\.(png|jpe?g|webp|gif|avif|bmp|heic|heif)$/i.test(f.name))) return status('Solte um arquivo de imagem (JPG, PNG ou WebP).', true);
   imageLoading = true;
   try {
-    const src = await arquivoDados(f), img = await imagem(src);   // só troca o fundo depois de decodificar
+    const bruta = await arquivoDados(f), { img, src } = await reduzirFoto(await imagem(bruta), bruta);   // só troca o fundo depois de decodificar
     if (st.img) await salvarNaBiblioteca();   // a foto nova vira um projeto novo; o anterior fica guardado
     st.projeto = null; ultimaAssinatura = null; marcarSalvo(''); st.fundo = { ...FUNDO_PADRAO }; st.imgFundo = null; st.imgFundoSrc = null; painelFundo();
     stopMotion(); st.imgSrc = src; st.img = img; $('fx').value = .5; $('fy').value = .5; $('fz').value = 1; $('ox').value = 0; $('oy').value = 0;
