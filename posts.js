@@ -88,7 +88,8 @@ function cobrir(c, src, w = W(), h = H()) {
 function mascara(img) {   // máscara enquadrada no formato atual (canvas + alfa), com cache
   const k = chaveEnq();
   img._c = img._c || {};
-  if (!img._c[k]) { const c = document.createElement('canvas'); c.width = W(); c.height = H(); cobrir(c.getContext('2d'), img); img._c[k] = { canvas: c, alfa: c.getContext('2d').getImageData(0, 0, W(), H()).data }; }
+  if (!img._c[k]) { for (const kk of Object.keys(img._c)) if (kk !== k && !kk.startsWith('bbox')) delete img._c[kk];   // só o enquadramento atual (antes acumulava um por quadro da pinça)
+    const c = document.createElement('canvas'); c.width = W(); c.height = H(); cobrir(c.getContext('2d'), img); img._c[k] = { canvas: c, alfa: c.getContext('2d').getImageData(0, 0, W(), H()).data }; }
   return img._c[k];
 }
 const segmentos = l => l.split(/(\*[^*]+\*)/).filter(Boolean).map(p => ({ t: p.replace(/\*/g, ''), b: p.startsWith('*') }));
@@ -654,6 +655,9 @@ function render(c, { selecao = false, tempo = (st.motion.preview ? st.motion.tim
   if (c.canvas.height !== H()) c.canvas.height = H();
   c.clearRect(0, 0, W(), H());
   c.fillStyle = '#000'; c.fillRect(0, 0, W(), H()); if (!st.img) return;
+  // Caio 24/11 22:01: mover ou dar zoom na foto com efeitos por cima travava, porque cada quadro refazia todos os efeitos
+  // e máscaras. Durante o gesto da foto desenha só a foto e os textos simples; ao soltar, a arte completa volta.
+  if (st.rapido) { cobrir(c, st.img); for (const L of st.camadas) if (!L.oculto && L.tipo === 'texto' && !L.modoFoco && !(L.atras || []).length) desenharTexto(c, L); return; }
   const mascPessoa = () => { const m = st.pessoa || st.objetos[pessoaIdx()]?.img; return m ? mascara(m).canvas : null; };
   desenharFotoTratada(c, { foto: st.img, enquadrar: (g, src) => cobrir(g, src), mascara: mascPessoa, imagemFundo: st.imgFundo, w: W(), h: H(), f: st.fundo,
     chave: [chaveEnq(), idDe(st.img), idDe(st.pessoa), idDe(st.imgFundo)].join() });
@@ -724,8 +728,11 @@ function desenharSelecao(c) {
   }
   c.restore();
 }
-const desenhar = () => { render(ctx, { selecao: true }); painel(); interfaceAtual(); };
-const redesenhar = () => render(ctx, { selecao: true });
+let quadroPendente = 0;
+const desenhar = () => { if (quadroPendente) { cancelAnimationFrame(quadroPendente); quadroPendente = 0; } render(ctx, { selecao: true }); painel(); interfaceAtual(); };
+// Caio 24/11 22:01: no máximo um desenho por quadro da tela; antes cada movimento do dedo desenhava a arte inteira e os
+// pedidos se acumulavam (com efeitos pesados, a pinça travava).
+const redesenhar = () => { if (quadroPendente) return; quadroPendente = requestAnimationFrame(() => { quadroPendente = 0; render(ctx, { selecao: true }); }); };
 
 // ---------- desfazer / refazer ----------
 const hist = { pilha: [], pos: -1 };
@@ -758,7 +765,7 @@ cv.addEventListener('wheel', e => {   // pinça na trackpad (chega como ctrl+rod
   const p = local(e), E0 = enquadramento(), fz = Math.max(.3, Math.min(5, (+$('fz').value || 1) * Math.exp(-e.deltaY * (e.ctrlKey ? .01 : .002))));
   $('fz').value = fz; const E1 = enquadramento(), r = E1.dw / E0.dw;   // o ponto da foto sob o cursor fica parado
   posicionarFoto(p.x - (p.x - E0.x) * r, p.y - (p.y - E0.y) * r, E1);
-  redesenhar(); clearTimeout(st.tm); st.tm = setTimeout(() => { encaixarFoto(); desenhar(); miniaturas(); }, 400);
+  st.rapido = true; redesenhar(); clearTimeout(st.tm); st.tm = setTimeout(() => { st.rapido = false; encaixarFoto(); desenhar(); miniaturas(); }, 400);
 }, { passive: false });
 $('enquadrarReset').onclick = () => { $('fx').value = .5; $('fy').value = .5; $('fz').value = 1; $('ox').value = 0; $('oy').value = 0; desenhar(); miniaturas(); };
 $('pstage').addEventListener('wheel', e => { if (!e.metaKey) return; e.preventDefault(); st.zoom = Math.max(.1, Math.min(4, (st.zoom ?? ajustarZoom()) * Math.exp(-e.deltaY * .004))); ajustarZoom(); redesenhar(); }, { passive: false });
@@ -1220,7 +1227,7 @@ cv.onpointerdown = e => {
     const i = camadaEm(p);
     if (i === undefined) {   // ponto sem camada: desseleciona e arrasta a foto (enquadramento com o dedo)
       st.sel = -1; if (!st.img) { desenhar(); return; }
-      gesto = { tipo: 'foto', p0: p, E: enquadramento() }; gesto.movido = false; cv.setPointerCapture(e.pointerId); cv.style.cursor = 'grabbing'; desenhar(); return;
+      st.rapido = true; gesto = { tipo: 'foto', p0: p, E: enquadramento() }; gesto.movido = false; cv.setPointerCapture(e.pointerId); cv.style.cursor = 'grabbing'; desenhar(); return;
     }
     st.sel = i; const L = st.camadas[i]; gesto = { tipo: 'mover', L, p0: p, v: { ...L }, b0: { ...L._box } };
   }
@@ -1325,7 +1332,7 @@ function escalar(L, v, fx, fy, esticar = false) {
   if (L.forma === 'caixa' && !esticar && v.tamLegenda) L.tamLegenda = Math.round(v.tamLegenda * fx);
 }
 let gestoAlt = false;
-cv.onpointerup = e => { gestoAlt = !!e?.altKey; if (!gesto) return; const mudou = gesto.movido, foto = gesto.tipo === 'foto'; gesto = null; st.guias = null; if (foto) { cv.style.cursor = 'grab'; if (mudou && !gestoAlt) encaixarFoto(); desenhar(); if (mudou) { clearTimeout(st.tm); st.tm = setTimeout(miniaturas, 300); } return; } if (mudou) registrar(); desenhar(); };
+cv.onpointerup = e => { gestoAlt = !!e?.altKey; if (!gesto) return; const mudou = gesto.movido, foto = gesto.tipo === 'foto'; gesto = null; st.rapido = false; st.guias = null; if (foto) { cv.style.cursor = 'grab'; if (mudou && !gestoAlt) encaixarFoto(); desenhar(); if (mudou) { clearTimeout(st.tm); st.tm = setTimeout(miniaturas, 300); } return; } if (mudou) registrar(); desenhar(); };
 // clicar fora da arte (parte escura) desseleciona
 $('pstage').addEventListener('pointerdown', e => { if (e.target === cv || e.target.closest('.drop') || e.target.closest('#inlineEdit') || e.target.closest('.pstatus')) return; if (st.sel !== -1) { st.sel = -1; desenhar(); } });
 $('pstage').addEventListener('dblclick', e => { if (e.target !== cv) return; });
@@ -1828,15 +1835,17 @@ function menuDoToque(e, p) {
   setTimeout(() => document.addEventListener('pointerdown', function fora(ev) { if (!ev.target.closest('#menuToque')) { fecharMenuToque(); document.removeEventListener('pointerdown', fora, true); } }, true), 0);
 }
 // dois dedos: com uma camada selecionada, aumenta, diminui e gira a camada; sem seleção, aproxima e move a foto
-const toques = new Map(); let pinca = null, ultimoToque = null;
+const toques = new Map(); let pinca = null, ultimoToque = null, selAntesDoToque = -1;
 const baixoOriginal = cv.onpointerdown, moverOriginal = cv.onpointermove, cimaOriginal = cv.onpointerup;
 const geo = () => { const [a, b] = [...toques.values()]; return { d: Math.hypot(b.x - a.x, b.y - a.y) || 1, ang: Math.atan2(b.y - a.y, b.x - a.x), m: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } }; };
 cv.onpointerdown = e => {
   if (e.pointerType === 'touch') {
-    if (e.isPrimary) { toques.clear(); pinca = null; } // primeiro dedo de um toque novo: descarta toques que não terminaram
+    if (e.isPrimary) { toques.clear(); pinca = null; selAntesDoToque = st.sel; } // primeiro dedo de um toque novo: descarta toques que não terminaram
     toques.set(e.pointerId, local(e));
     if (toques.size === 2) {
-      gesto = null; st.guias = null; const g = geo(), L = st.camadas[st.sel];
+      // a pinça age no que estava selecionado ANTES do toque: sem seleção, é zoom na foto, mesmo com efeitos cobrindo a arte
+      gesto = null; st.guias = null; st.sel = selAntesDoToque; const g = geo(), L = st.camadas[st.sel];
+      if (!(L && !L.oculto)) st.rapido = true;
       pinca = { g0: g, L: L && !L.oculto ? L : null, v: L ? JSON.parse(JSON.stringify({ ...L, img: undefined, _box: undefined })) : null, E0: enquadramento(), fz0: +$('fz').value || 1 };
       try { cv.setPointerCapture(e.pointerId); } catch {} return;
     }
@@ -1867,7 +1876,7 @@ cv.onpointermove = e => {
 };
 cv.onpointerup = cv.onpointercancel = e => {
   toques.delete(e.pointerId);
-  if (pinca) { if (toques.size < 2) { const foto = !pinca.L; pinca = null; if (foto) encaixarFoto(); registrar(); desenhar(); clearTimeout(st.tm); st.tm = setTimeout(miniaturas, 300); } return; }
+  if (pinca) { if (toques.size < 2) { const foto = !pinca.L; pinca = null; st.rapido = false; if (foto) encaixarFoto(); registrar(); desenhar(); clearTimeout(st.tm); st.tm = setTimeout(miniaturas, 300); } return; }
   cimaOriginal(e);
 };
 // Segurar o dedo (ou o clique) parado na arte mostra a foto original, sem nenhuma edição; soltar volta (Caio 24/11 21:23).
@@ -1935,5 +1944,5 @@ $('exportar').onclick = () => {
   c.canvas.toBlob(b => { baixar(b, `post_${palavra().replace(/[^\wÀ-ú]+/g, '')}_${st.formato}.png`); status('PNG exportado para Downloads.'); }, 'image/png');
 };
 window.__posts = st;   // inspeção em testes
-window.__render = () => redesenhar();
+window.__render = () => render(ctx, { selecao: true });
 await carregarFontes(); miniaturas(); desenhar(); registrar(); recentesNaTelaInicial();
