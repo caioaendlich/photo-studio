@@ -659,7 +659,7 @@ function render(c, { selecao = false, tempo = (st.motion.preview ? st.motion.tim
   const quadro = [chaveEnq(), JSON.stringify(st.fundo), idDe(st.imgFundo), idDe(st.img), idDe(st.pessoa), idDe(st.rosto), st.objetos.map(o => idDe(o.img)).join('.'), versaoFontes].join();
   let pilha = '';
   for (const L of st.camadas) {
-    if (L.oculto) continue;
+    if (L.oculto || L._editando) continue;   // o texto em edição aparece só na caixa (sem duplicar atrás)
     let A = tempo === null ? L : interpolate(L, tempo);
     if (A.forma === 'anelTexto' && tempo !== null && A.giro) A = { ...A, fase: (A.fase || 0) + A.giro * tempo };
     if (A.forma === 'receita') A = { ...A, _t: tempo };
@@ -679,7 +679,7 @@ function render(c, { selecao = false, tempo = (st.motion.preview ? st.motion.tim
   }
   const ass = $('assinatura').value.trim().toUpperCase();
   if (ass) { c.font = '400 15px Neue'; c.fillStyle = OSSO; c.textAlign = 'center'; c.fillText(ass.split(/\s+/).map(p => [...p].join(' ')).join('   '), W() / 2, st.formato === 'story' ? H() - 300 : H() - 46); c.textAlign = 'left'; }
-  if (selecao) desenharSelecao(c);
+  if (selecao && !st.editando) desenharSelecao(c);   // bolinhas somem enquanto digita
 }
 
 // ---------- seleção: moldura e bolinhas (iguais em todas as camadas) ----------
@@ -1307,15 +1307,29 @@ cv.ondblclick = e => {
   if (L.tipo === 'texto' || L.forma === 'receita') editarNaArte(L);
   else if (L.forma === 'caixa') { desenhar(); $('props').querySelector('input[type=text]')?.focus(); }
 };
+// Caio 24/11 21:07: na edição a camada some da arte (sem texto duplicado atrás), as bolinhas somem, e a caixa usa a
+// fonte, o peso e o alinhamento do próprio texto, com o tamanho ajustado à largura da caixa.
 function editarNaArte(L) {
-  const ta = $('inlineEdit'), r = cv.getBoundingClientRect(), s = r.width / W(), b = L._box;
-  ta.value = L.texto; ta.style.display = 'block';
-  ta.style.left = Math.max(0, (b.x - b.w / 2) * s) + 'px'; ta.style.top = Math.max(0, (b.y - b.h / 2) * s) + 'px';
-  ta.style.width = Math.max(160, b.w * s) + 'px'; ta.style.height = Math.max(44, b.h * s) + 'px';
-  ta.focus(); ta.select();
-  ta.oninput = () => { L.texto = ta.value; redesenhar(); };
+  const ta = $('inlineEdit'), r = cv.getBoundingClientRect(), s = r.width / W(), b = L._box || { x: W() / 2, y: H() / 2, w: W() * .6, h: 120 };
+  const receita = L.forma === 'receita', fam = receita ? 'Neue, GenSans, sans-serif' : familia(L.fonte), peso = receita ? 700 : (L.peso || 600);
+  const larg = Math.min(r.width - 8, Math.max(140, b.w * s + 24)), esq = Math.max(4, Math.min(r.width - larg - 4, b.x * s - larg / 2));
+  L._editando = true; st.editando = true;
+  Object.assign(ta.style, { display: 'block', left: esq + 'px', width: larg + 'px', fontFamily: fam, fontWeight: String(peso),
+    textTransform: receita || L.caixa ? 'uppercase' : 'none', textAlign: receita ? 'center' : (L.alinhar || 'center'), letterSpacing: receita ? '0' : ((L.esp || 0) + 'em') });
+  const medir = document.createElement('canvas').getContext('2d');
+  const ajustar = () => {
+    const alvo = Math.max(16, Math.min(64, (L.tam || 60) * (L.sx || 1) * s)), linhas = String(ta.value || ' ').split('\n');
+    medir.font = `${peso} ${alvo}px ${fam}`;
+    const maior = Math.max(...linhas.map(l => medir.measureText((receita || L.caixa ? l.toUpperCase() : l) || ' ').width * (1 + Math.max(0, L.esp || 0) * .6)));
+    const tam = Math.max(16, Math.min(alvo, alvo * (larg - 20) / Math.max(1, maior)));
+    ta.style.fontSize = tam + 'px'; ta.style.lineHeight = (receita ? 1.15 : (L.entre || 1.1)) + '';
+    ta.style.height = 'auto'; ta.style.height = Math.min(r.height - 8, ta.scrollHeight + 2) + 'px';
+    ta.style.top = Math.max(4, Math.min(r.height - ta.offsetHeight - 4, b.y * s - ta.offsetHeight / 2)) + 'px';
+  };
+  ta.value = L.texto; ajustar(); redesenhar(); ta.focus(); ta.select();
+  ta.oninput = () => { L.texto = ta.value; ajustar(); };
   ta.onkeydown = ev => { ev.stopPropagation(); if (ev.key === 'Escape' || (ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey))) { ev.preventDefault(); ta.blur(); } };
-  ta.onblur = () => { ta.style.display = 'none'; ta.onblur = null; registrar(); desenhar(); };
+  ta.onblur = () => { ta.style.display = 'none'; ta.onblur = null; delete L._editando; st.editando = false; registrar(); desenhar(); };
 }
 
 // ---------- recorte e objetos (no Mac) ----------
