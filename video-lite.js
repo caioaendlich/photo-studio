@@ -27,28 +27,38 @@ function status(m, erro) { $('status').textContent = m || ''; $('status').style.
 
 /* ---------- takes ---------- */
 function carregarVideo(file) {
+  // iPhone: o vídeo precisa estar na página e com load() chamado, senão os eventos podem nunca chegar.
+  // Tudo tem prazo: sem capa em 4 s segue sem capa; sem abrir em 20 s avisa e segue para o próximo.
   return new Promise((ok, falha) => {
     const v = document.createElement('video');
-    v.playsInline = true; v.preload = 'auto'; v.muted = true; v.crossOrigin = 'anonymous';
-    v.src = URL.createObjectURL(file);
-    v.onloadedmetadata = () => {
-      v.currentTime = Math.min(0.1, v.duration / 2);
-      v.onseeked = () => {
-        const c = document.createElement('canvas'); c.width = 108; c.height = 192;
-        cobrir(c.getContext('2d'), v, 108, 192, 1, 0);
-        v.onseeked = null;
-        ok({ nome: file.name, file, v, duracao: v.duration, ini: 0, fim: v.duration, zoom: 1, y: 0, vol: 1, capa: c.toDataURL('image/jpeg', .7) });
-      };
+    v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto'; v.muted = true;
+    v.style.cssText = 'position:fixed;left:-9999px;top:0;width:2px;height:2px;opacity:0;pointer-events:none';
+    document.body.appendChild(v);
+    let feito = false;
+    const fim = (r, erro) => { if (feito) return; feito = true; clearTimeout(tLimite); erro ? (v.remove(), falha(erro)) : ok(r); };
+    const tLimite = setTimeout(() => fim(null, new Error('O iPhone não abriu ' + file.name + ' a tempo. Tente de novo ou escolha um take mais curto.')), 20000);
+    const montar = capa => {
+      const d = isFinite(v.duration) && v.duration > 0 ? v.duration : 10;
+      fim({ nome: file.name, file, v, duracao: d, ini: 0, fim: d, zoom: 1, y: 0, vol: 1, capa });
     };
-    v.onerror = () => falha(new Error('Não consegui abrir ' + file.name));
+    const capaDe = () => { try { const c = document.createElement('canvas'); c.width = 108; c.height = 192; cobrir(c.getContext('2d'), v, 108, 192, 1, 0); return c.toDataURL('image/jpeg', .7); } catch (e) { return ''; } };
+    v.onloadeddata = () => {
+      const tCapa = setTimeout(() => { v.onseeked = null; montar(capaDe()); }, 4000);
+      v.onseeked = () => { clearTimeout(tCapa); v.onseeked = null; montar(capaDe()); };
+      try { v.currentTime = Math.min(0.1, (isFinite(v.duration) ? v.duration : 1) / 2); } catch (e) { clearTimeout(tCapa); montar(capaDe()); }
+    };
+    v.onerror = () => fim(null, new Error('Não consegui abrir ' + file.name));
+    v.src = URL.createObjectURL(file);
+    v.load();
   });
 }
 $('arquivos').onchange = async e => {
   const fs = [...e.target.files]; e.target.value = '';
-  status('Abrindo ' + fs.length + ' vídeo(s)…');
-  for (const f of fs) { try { st.clipes.push(await carregarVideo(f)); } catch (err) { status(err.message, true); } }
+  let n = 0, erros = 0;
+  for (const f of fs) { n++; status('Abrindo vídeo ' + n + ' de ' + fs.length + '…');
+    try { st.clipes.push(await carregarVideo(f)); listarClipes(); } catch (err) { erros++; status(err.message, true); await new Promise(r => setTimeout(r, 1500)); } }
   if (st.sel < 0 && st.clipes.length) st.sel = 0;
-  listarClipes(); mostrarCorte(); irPara(st.t); status('');
+  listarClipes(); mostrarCorte(); irPara(st.t); status(erros ? erros + ' vídeo(s) não abriram. Os outros estão prontos.' : '', !!erros);
 };
 function listarClipes() {
   const el = $('clipes');
