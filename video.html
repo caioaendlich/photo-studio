@@ -7,85 +7,139 @@
 @font-face{font-family:"Satoshi";src:url(fonts/Satoshi-Bold.ttf);font-weight:700}
 @font-face{font-family:"Satoshi";src:url(fonts/Satoshi-Light.ttf);font-weight:300}
 @font-face{font-family:"Montserrat";src:url(fonts/Montserrat-SemiBold.ttf);font-weight:600}
+@font-face{font-family:"Montserrat";src:url(fonts/Montserrat-Bold.ttf);font-weight:800}
 @font-face{font-family:"Instrument Serif";src:url(fonts/InstrumentSerif-Italic.ttf);font-style:italic}
+@font-face{font-family:"Instrument Serif";src:url(fonts/InstrumentSerif-Regular.ttf);font-style:normal}
+@font-face{font-family:"Jost";src:url(fonts/Jost-Light.ttf);font-weight:300}
+@font-face{font-family:"Jost";src:url(fonts/Jost-Medium.ttf);font-weight:500}
+@font-face{font-family:"Bodoni Moda";src:url(fonts/BodoniModa-Black.ttf);font-weight:900}
+@font-face{font-family:"Archivo";src:url(fonts/Archivo-Black.ttf);font-weight:900}
 @font-face{font-family:"Melodrama";src:url(fonts/Melodrama-Bold.ttf)}
+:root{--ac:#c6f578;--bg:#0d0f0e;--p1:#161917;--p2:#1e2220;--ln:#2c312d;--tx:#e8e9e5;--mu:#97a093}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{background:var(--bg);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+textarea,input{-webkit-user-select:text;user-select:text}
+header{height:52px;padding:0 14px;gap:10px}
 .switch{display:inline-flex;border:1px solid #383b3b;border-radius:999px;padding:3px;gap:3px}
-.switch a,.switch span{padding:8px 16px;border-radius:999px;text-decoration:none;color:#9aa296;font-size:13px}
-.switch .on{background:#c6f578;color:#1a2312;font-weight:bold}
-.vl{display:grid;grid-template-columns:300px minmax(0,1fr) 320px;height:calc(100vh - 76px)}
-.vl aside{background:#181b19;padding:16px;overflow:auto}
-.vl aside:first-child{border-right:1px solid #303332}.vl aside:last-child{border-left:1px solid #303332}
-.mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:14px;min-height:0;background:radial-gradient(ellipse at center,#292d27 0,#111412 72%)}
-#tela{height:min(72vh,100%);aspect-ratio:9/16;background:#000;border-radius:10px;box-shadow:0 8px 40px #0008;max-width:100%}
-.ctrl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}
-.ctrl .play{background:#c6f578;color:#192311;border-radius:50%;width:44px;height:44px;padding:0;font-size:16px;border:0}
-#tempo{font-variant-numeric:tabular-nums;font-size:12px;color:#bfc8b9;min-width:96px;text-align:center}
-#barra{width:min(420px,90%)}
-.eyebrow{color:#abb5a7;font-size:10px;letter-spacing:1.8px;margin:6px 0 10px;text-transform:uppercase}
-.add{display:block;background:#2a3027;border:1px dashed #5b6d50;padding:14px;border-radius:8px;text-align:center;cursor:pointer;margin-bottom:12px}
-.clipe{background:#232824;border:1px solid #2f362c;border-radius:8px;padding:8px;margin:6px 0;display:grid;grid-template-columns:54px 1fr;gap:8px;align-items:center;cursor:pointer}
-.clipe.sel{border-color:#c6f578;background:#2e3826}
-.clipe img{width:54px;height:96px;object-fit:cover;border-radius:5px;background:#000}
-.clipe small{display:block;color:#9aa296;font-size:11px}
-.clipe .bt{display:flex;gap:4px;margin-top:6px}.clipe .bt button{padding:5px 8px;font-size:11px}
-label{display:block;font-size:11px;color:#b1bbab;margin:10px 0}label input,label select,label textarea{margin-top:5px}
-.dupla{display:flex;gap:8px}.dupla>*{flex:1;min-width:0}
-.txt{background:#232824;border:1px solid #2f362c;border-radius:8px;padding:8px;margin:6px 0;font-size:12px;cursor:pointer}
-.txt.sel{border-color:#c6f578}
-.chips{display:flex;flex-wrap:wrap;gap:6px}.chips button{padding:7px 10px;font-size:12px}.chips button.on{border-color:#c6f578;color:#d9f9b3}
-#status{font-size:12px;color:#b2bfaa;min-height:18px;text-align:center}
-.primary{width:100%;margin-top:8px}
-.vazio{color:#8f9989;font-size:12px;line-height:1.6}
-@media(max-width:820px){
- header{height:auto;padding:10px 12px;flex-wrap:wrap;gap:8px}header nav{display:none}
- .vl{display:flex;flex-direction:column;height:auto}
- .vl aside{border:0!important;padding:12px 14px}
- .mid{order:-1;padding:10px 10px 6px}
- #tela{height:auto;width:min(100%,58vh*9/16);max-height:62vh}
- button,input,select{min-height:40px}
+.switch a,.switch span{padding:6px 14px;border-radius:999px;text-decoration:none;color:#9aa296;font-size:13px}
+.switch .on{background:var(--ac);color:#1a2312;font-weight:bold}
+.hd-acts{display:flex;gap:6px;align-items:center}
+.ib{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;padding:0;border-radius:10px;background:transparent;border:1px solid transparent}
+.ib:hover{background:#252a26}.ib svg{width:20px;height:20px}
+.ib:disabled{opacity:.3}
+.exp{background:var(--ac);color:#17200f;border:0;font-weight:700;border-radius:10px;padding:9px 14px;display:inline-flex;gap:6px;align-items:center}
+.exp svg{width:17px;height:17px}
+svg{stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.app{height:calc(100% - 52px);display:flex;flex-direction:column;min-height:0}
+.prev{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#20241f 0,#0b0d0c 75%);position:relative;padding:8px}
+#tela{max-width:100%;max-height:100%;background:#000;border-radius:6px;touch-action:none;box-shadow:0 6px 30px #000a}
+.vazio-prev{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--mu);text-align:center;padding:20px}
+.vazio-prev .grande{background:var(--ac);color:#17200f;border:0;border-radius:14px;padding:16px 22px;font-weight:700;font-size:16px;display:flex;gap:8px;align-items:center}
+.vazio-prev .grande svg{width:22px;height:22px}
+.transp{display:flex;align-items:center;justify-content:space-between;padding:4px 10px;background:var(--p1);border-top:1px solid var(--ln)}
+.transp .t{font-variant-numeric:tabular-nums;font-size:12px;color:#c9d1c4;min-width:92px}
+.transp .mid{display:flex;gap:4px;align-items:center}
+.playb{width:46px;height:46px;border-radius:50%;background:var(--tx);color:#111;border:0;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.playb svg{width:22px;height:22px;fill:#111;stroke:#111}
+.tlw{position:relative;background:var(--p1);border-top:1px solid var(--ln);flex:0 0 auto}
+.tl{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;touch-action:pan-x}
+.tl::-webkit-scrollbar{display:none}
+.tli{position:relative;height:150px}
+.regua{position:absolute;top:0;left:0;height:16px;font-size:9px;color:#78816f}
+.regua span{position:absolute;top:2px;transform:translateX(-50%)}
+.lane{position:absolute;left:0;height:0}
+.bloco{position:absolute;border-radius:6px;overflow:hidden;box-sizing:border-box}
+.bloco.v{top:20px;height:56px;background:#2c3a28;border:2px solid transparent;display:flex}
+.bloco.v img{height:100%;width:40px;object-fit:cover;flex:0 0 auto;pointer-events:none;opacity:.95}
+.bloco.v .rot{position:absolute;left:6px;bottom:3px;font-size:10px;color:#fff;text-shadow:0 1px 2px #000;pointer-events:none}
+.bloco.v.sel{border-color:#fff}
+.bloco .alca{position:absolute;top:0;bottom:0;width:18px;background:#fff;display:none;align-items:center;justify-content:center;z-index:2;touch-action:none}
+.bloco .alca:after{content:'';width:3px;height:18px;border-radius:2px;background:#222}
+.bloco.sel .alca{display:flex}
+.bloco .alca.e{left:0;border-radius:4px 0 0 4px}.bloco .alca.d{right:0;border-radius:0 4px 4px 0}
+.bloco.t{height:24px;top:84px;background:#5a4a8a;border:1.5px solid transparent;font-size:11px;color:#fff;padding:4px 20px 0 8px;white-space:nowrap;text-overflow:ellipsis}
+.bloco.t.leg{top:84px;background:#3b5f7a}
+.bloco.t.sel{border-color:#fff}
+.bloco.m{height:24px;top:114px;background:#7a5a2a;font-size:11px;color:#fff;padding:4px 8px 0 20px;white-space:nowrap;border:1.5px solid transparent}
+.bloco.m.sel{border-color:#fff}
+.bloco.t .alca,.bloco.m .alca{width:14px}
+.trans{position:absolute;top:36px;width:24px;height:24px;margin-left:-12px;border-radius:6px;background:#111;border:1px solid #555;display:flex;align-items:center;justify-content:center;z-index:3;padding:0;color:#ddd}
+.trans svg{width:14px;height:14px}.trans.on{background:var(--ac);color:#111;border-color:var(--ac)}
+.cursor{position:absolute;top:0;bottom:0;left:50%;width:2px;margin-left:-1px;background:#fff;pointer-events:none;z-index:5;box-shadow:0 0 4px #000}
+.cursor:before{content:'';position:absolute;top:0;left:-5px;border:6px solid transparent;border-top-color:#fff}
+.addcl{position:absolute;top:28px;width:40px;height:40px;border-radius:10px;background:#2a2f2b;border:1px dashed #6e7a67;display:flex;align-items:center;justify-content:center;padding:0}
+.addcl svg{width:20px;height:20px}
+.painel{flex:0 0 auto;max-height:34vh;overflow-y:auto;background:var(--p2);border-top:1px solid var(--ln);padding:10px 14px 14px;-webkit-overflow-scrolling:touch}
+.painel[hidden]{display:none}
+.painel h4{margin:2px 0 10px;font-size:12px;letter-spacing:1.2px;color:#b8c2b2;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.painel h4 button{padding:4px 10px;font-size:11px;text-transform:none;letter-spacing:0}
+.sl{display:grid;grid-template-columns:96px 1fr 44px;align-items:center;gap:10px;margin:8px 0;font-size:12px;color:#c2cbbd}
+.sl output{font-variant-numeric:tabular-nums;text-align:right;color:var(--mu);font-size:11px}
+.sl input{margin:0}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;padding:8px 12px;border-radius:999px;font-size:12px;background:#262b27;border:1px solid #363c37;white-space:nowrap}
+.chip.on{border-color:var(--ac);color:#e4ffc0;background:#2c3824}
+.looks{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
+.looks::-webkit-scrollbar{display:none}
+.look{flex:0 0 auto;width:64px;text-align:center;font-size:10px;color:#c2cbbd;background:none;border:0;padding:0}
+.look canvas{width:64px;height:84px;border-radius:8px;border:2px solid transparent;display:block;margin-bottom:4px;background:#000}
+.look.on canvas{border-color:var(--ac)}
+.row2{display:flex;gap:8px;margin:8px 0}.row2>*{flex:1;min-width:0}
+.fontes{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.fontes::-webkit-scrollbar{display:none}
+.fonte{flex:0 0 auto;min-width:74px;height:46px;font-size:18px;border-radius:10px;background:#262b27;border:1px solid #363c37;padding:0 10px}
+.fonte.on{border-color:var(--ac)}
+.cores{display:flex;gap:8px;overflow-x:auto;padding:2px;scrollbar-width:none}
+.cores::-webkit-scrollbar{display:none}
+.cor{flex:0 0 auto;width:30px;height:30px;border-radius:50%;border:2px solid #333;padding:0}
+.cor.on{outline:2px solid #fff;outline-offset:2px}
+.cores input[type=color]{width:34px;height:34px;padding:0;border-radius:50%;border:0;flex:0 0 auto}
+.ferr{flex:0 0 auto;display:flex;gap:2px;overflow-x:auto;background:var(--p1);border-top:1px solid var(--ln);padding:6px 6px max(6px,env(safe-area-inset-bottom));scrollbar-width:none}
+.ferr::-webkit-scrollbar{display:none}
+.fb{flex:0 0 auto;min-width:64px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;color:#d3dacd;background:transparent;border:0;padding:6px 4px;border-radius:10px}
+.fb svg{width:23px;height:23px}
+.fb:hover{background:#232824}.fb.on{color:var(--ac)}
+.fb.perigo{color:#f3a3a3}
+.fb.volta{min-width:44px;border-right:1px solid var(--ln);border-radius:0;margin-right:4px}
+.leglist{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.legit{display:grid;grid-template-columns:52px 1fr;gap:8px;align-items:start;font-size:12px}
+.legit small{color:var(--mu);font-variant-numeric:tabular-nums;padding-top:9px}
+.legit textarea{padding:7px;font-size:13px;resize:none}
+#status{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:#000c;color:#e9eee5;font-size:12px;padding:8px 14px;border-radius:999px;max-width:90%;text-align:center;pointer-events:none;opacity:0;transition:opacity .2s}
+#status.v{opacity:1}#status.erro{color:#ffb7ad}
+.prog{position:fixed;inset:0;background:#000d;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#eee}
+.prog[hidden]{display:none}
+.prog .bar{width:min(320px,80vw);height:8px;border-radius:99px;background:#333;overflow:hidden}
+.prog .bar i{display:block;height:100%;width:0;background:var(--ac)}
+.fecharP{position:sticky;top:0;float:right;width:34px;height:34px;padding:0;border-radius:50%;background:var(--ac);color:#17200f;border:0;display:inline-flex;align-items:center;justify-content:center;margin-left:8px;z-index:2}.fecharP svg{width:18px;height:18px}
+.nota{font-size:11px;color:var(--mu);line-height:1.5;margin:6px 0}
+@media(min-width:900px){
+ .app{display:grid;grid-template-columns:minmax(0,1fr) minmax(420px,46%);grid-template-rows:minmax(0,1fr) auto auto auto auto;}
+ .prev{grid-column:1;grid-row:1 / 6}
+ .transp,.tlw,.painel,.ferr{grid-column:2}
+ .transp{grid-row:1;align-self:start}
+ .painel{grid-row:4;max-height:none;min-height:0}
+ .app{grid-template-rows:auto auto auto minmax(0,1fr) auto}
+ .transp{grid-row:1}.tlw{grid-row:2}.ferr{grid-row:3}.painel{grid-row:4}
 }
+@media(max-width:899px){.app.compacto .tlw{display:none}.painel{max-height:40vh}
+ header nav{display:none}.brand span{display:none}.brand{font-size:14px}}
 </style></head><body>
 <header><div class="brand"><b>◉</b> CAIO <span>MEDIA STUDIO</span></div>
 <div class="switch"><a href="index.html">Foto</a><span class="on">Vídeo</span></div>
-<nav><a href="index.html">Edição manual</a><a href="montage.html">Montagem por blocos</a><a href="estilo.html">Estilo</a></nav></header>
-<div class="vl">
- <aside>
-  <p class="eyebrow">Takes</p>
-  <label class="add">＋ Adicionar vídeos<input id="arquivos" type="file" accept="video/*" multiple hidden></label>
-  <div id="clipes"><p class="vazio">Escolha de 1 a 10 vídeos do rolo da câmera. Eles entram na ordem em que você escolher.</p></div>
-  <div id="corte" hidden>
-   <p class="eyebrow" style="margin-top:18px">Take selecionado</p>
-   <label>Início <span id="vIni"></span><input id="ini" type="range" min="0" max="1" step="0.01"></label>
-   <label>Fim <span id="vFim"></span><input id="fim" type="range" min="0" max="1" step="0.01"></label>
-   <div class="dupla"><label>Zoom<input id="zoom" type="range" min="1" max="2.5" step="0.01" value="1"></label><label>Altura<input id="posY" type="range" min="-1" max="1" step="0.01" value="0"></label></div>
-   <label>Volume do áudio<input id="vol" type="range" min="0" max="1" step="0.05" value="1"></label>
-  </div>
- </aside>
- <div class="mid">
-  <canvas id="tela" width="1080" height="1920"></canvas>
-  <div class="ctrl"><button id="voltar" title="Início">⏮</button><button class="play" id="play">▶</button><span id="tempo">0,0 / 0,0 s</span></div>
-  <input id="barra" type="range" min="0" max="1" step="0.01" value="0">
-  <p id="status"></p>
- </div>
- <aside>
-  <p class="eyebrow">Cor</p>
-  <div class="chips" id="filtros"></div>
-  <p class="eyebrow" style="margin-top:18px">Textos</p>
-  <div class="dupla"><button id="novoTexto">＋ Texto</button><button id="legenda">Legenda automática</button></div>
-  <div id="textos"></div>
-  <div id="edTexto" hidden>
-   <label>Texto<textarea id="tTexto" rows="2"></textarea></label>
-   <div class="dupla"><label>Fonte<select id="tFonte"></select></label><label>Cor<input id="tCor" type="color" value="#ffffff"></label></div>
-   <div class="dupla"><label>Tamanho<input id="tTam" type="range" min="40" max="220" value="90"></label><label>Altura<input id="tY" type="range" min="0.06" max="0.94" step="0.01" value="0.75"></label></div>
-   <div class="dupla"><label>Aparece em (s)<input id="tDe" type="number" step="0.1" min="0"></label><label>Some em (s)<input id="tAte" type="number" step="0.1" min="0"></label></div>
-   <label><input id="tFundo" type="checkbox" style="width:auto;margin-right:6px">Fundo escuro atrás do texto</label>
-   <button id="tApagar" class="danger" style="width:100%">Apagar texto</button>
-  </div>
-  <p class="eyebrow" style="margin-top:18px">Exportar</p>
-  <button id="exportar" class="primary">Exportar story (9:16)</button>
-  <p class="vazio" style="margin-top:8px">O vídeo é gerado tocando a sequência do começo ao fim, com o som dos takes. Depois é só salvar ou mandar direto para o Instagram.</p>
- </aside>
+<div class="hd-acts"><button class="ib" id="desfazer" title="Desfazer"></button><button class="ib" id="refazer" title="Refazer"></button><button class="exp" id="exportar"></button></div></header>
+<div class="app">
+ <div class="prev" id="prev"><canvas id="tela" width="1080" height="1920"></canvas>
+  <div class="vazio-prev" id="vazioPrev"><label class="grande"><span id="icAdd"></span>Adicionar vídeos<input id="arquivos" type="file" accept="video/*" multiple hidden></label><div class="nota">Escolha os takes do rolo da câmera. Depois corte, ajuste a cor, ponha texto, legenda e música.</div></div>
+  <div id="status"></div></div>
+ <div class="transp"><span class="t" id="tempo">00:00,0 / 00:00,0</span><div class="mid"><button class="ib" id="inicio" title="Voltar ao início"></button><button class="ib" id="qAnt" title="Quadro anterior"></button><button class="playb" id="play" title="Tocar"></button><button class="ib" id="qProx" title="Próximo quadro"></button><button class="ib" id="fim" title="Ir ao fim"></button></div><span class="t" style="text-align:right"><button class="ib" id="zoomTl" title="Aproximar linha do tempo"></button></span></div>
+ <div class="tlw"><div class="tl" id="tl"><div class="tli" id="tli"></div></div><div class="cursor"></div></div>
+ <div class="ferr" id="ferr"></div>
+ <div class="painel" id="painel" hidden></div>
 </div>
+<input id="arqMais" type="file" accept="video/*" multiple hidden><input id="arqMusica" type="file" accept="audio/*,video/*" hidden>
+<div class="prog" id="prog" hidden><b id="progTit">Exportando…</b><div class="bar"><i id="progBar"></i></div><span id="progTxt" class="nota"></span><button id="progCancel">Cancelar</button></div>
 <script type="module" src="video-lite.js"></script>
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');</script>
 </body></html>
